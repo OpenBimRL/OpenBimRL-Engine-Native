@@ -1,4 +1,8 @@
 #include "lib.h"
+#include "utils.h"
+
+#include <ifcparse/Ifc4.h>
+#include <ifcparse/Ifc2x3.h>
 
 /// @brief writes IfcType#GUID to stringPointer
 /// @param ifcObject only works if GUID is at 0th position
@@ -10,14 +14,15 @@ bool ifc_object_to_string(JNA::Pointer ifcObject, JNA::Pointer stringPointer, co
     if (!ifcObject)
         return false;
 
-    const auto data = static_cast<IfcUtil::IfcBaseClass *>(ifcObject)->data();
-    std::stringstream ss;
+    const auto base = static_cast<IfcUtil::IfcBaseClass *>(ifcObject);
 
     // remove quotes from string
-    auto guid = data.getArgument(0)->toString();
-    guid.erase(std::remove(guid.begin(), guid.end(), '\''), guid.end());
+    auto guid = OpenBimRL::Engine::Utils::isIFC4() ?
+            dynamic_cast<Ifc4::IfcObject *>(base)->GlobalId() :
+            dynamic_cast<Ifc2x3::IfcObject *>(base)->GlobalId();
 
-    ss << data.type()->name() << '#' << guid;
+    std::stringstream ss;
+    ss << base->data().type()->name() << '#' << guid;
     const auto str = ss.str();
     std::memcpy(stringPointer, str.c_str(), std::min(maxLen, str.size()));
 
