@@ -1,6 +1,8 @@
 #include "lib.h"
 #include "utils.h"
+#include "functions.h"
 
+#include <ifcparse/Ifc4.h>
 #include <filesystem>
 #include <gtest/gtest.h>
 
@@ -15,4 +17,36 @@ TEST(IFC4, LoadFile) {
 TEST(IFC4, DetermineIFCVersion) {
     ASSERT_TRUE(OpenBimRL::Engine::Utils::isIFC4());
     ASSERT_FALSE(OpenBimRL::Engine::Utils::isIFC2x3());
+}
+
+TEST(Functions, FilterByGUID) {
+    // IfcOpeningElement#3bnVDGnRyHxfLHBF1T2vCN
+    const auto guid = "3bnVDGnRyHxfLHBF1T2vCN";
+    const auto getGUID = [=](uint32_t) { return guid; };
+    const auto setPointer = [=](uint32_t index, void* result) {
+        if (index != 0)
+            FAIL() << "filterByGUID returned nothing on output 0";
+        if (!result)
+            FAIL() << "filterByGUID returned null pointer!";
+        try {
+            const auto ifcItem = dynamic_cast<Ifc4::IfcObject *>((IfcUtil::IfcBaseClass *)(result));
+            const auto itemGUID = ifcItem->GlobalId();
+            EXPECT_EQ(itemGUID.compare(guid), 0) << "GUIDs: [" + itemGUID + ", " + guid + "] do not match!";
+        }
+        catch (std::exception &e) {
+            FAIL() << e.what();
+        }
+    };
+    OpenBimRL::Engine::Functions::getInputPointer = nullptr;
+    OpenBimRL::Engine::Functions::getInputDouble = nullptr;
+    OpenBimRL::Engine::Functions::getInputInt = nullptr;
+    OpenBimRL::Engine::Functions::getInputString = std::function(getGUID);
+
+    OpenBimRL::Engine::Functions::setOutputPointer = std::function(setPointer);
+    OpenBimRL::Engine::Functions::setOutputDouble = nullptr;
+    OpenBimRL::Engine::Functions::setOutputInt = nullptr;
+    OpenBimRL::Engine::Functions::setOutputString = nullptr;
+    OpenBimRL::Engine::Functions::setOutputArray = nullptr;
+
+    filterByGUID();
 }
