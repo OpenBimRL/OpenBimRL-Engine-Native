@@ -3,16 +3,17 @@
 namespace OpenBimRL::Engine::Functions
 {
 
-    get_input_pointer getInputPointer;
-    get_input_double getInputDouble;
-    get_input_integer getInputInt;
-    get_input_string getInputString;
+    std::function<JNA::Pointer(uint32_t)> getInputPointer;
+    std::function<double(uint32_t)> getInputDouble;
+    std::function<uint32_t(uint32_t)> getInputInt;
+    std::function<JNA::String(uint32_t)> getInputString;
 
-    set_output_pointer setOutputPointer;
-    set_output_double setOutputDouble;
-    set_output_integer setOutputInt;
-    set_output_string setOutputString;
-    set_output_array setOutputArray;
+// output functions
+    std::function<void(uint32_t, JNA::Pointer)> setOutputPointer;
+    std::function<void(uint32_t, double)> setOutputDouble;
+    std::function<void(uint32_t, uint32_t)> setOutputInt;
+    std::function<void(uint32_t, JNA::String)> setOutputString;
+    std::function<JNA::Pointer(uint32_t, uint32_t)> setOutputArray;
 }
 
 void init_function(get_input_pointer gip,
@@ -26,14 +27,14 @@ void init_function(get_input_pointer gip,
                    set_output_array soa)
 {
 
-    OpenBimRL::Engine::Functions::getInputPointer = gip;
-    OpenBimRL::Engine::Functions::getInputDouble = gid;
-    OpenBimRL::Engine::Functions::getInputInt = gii;
-    OpenBimRL::Engine::Functions::getInputString = gis;
+    OpenBimRL::Engine::Functions::getInputPointer = std::function(gip);
+    OpenBimRL::Engine::Functions::getInputDouble = std::function(gid);
+    OpenBimRL::Engine::Functions::getInputInt = std::function(gii);
+    OpenBimRL::Engine::Functions::getInputString = std::function(gis);
 
-    OpenBimRL::Engine::Functions::setOutputPointer = sop;
-    OpenBimRL::Engine::Functions::setOutputDouble = sod;
-    OpenBimRL::Engine::Functions::setOutputInt = soi;
-    OpenBimRL::Engine::Functions::setOutputString = sos;
-    OpenBimRL::Engine::Functions::setOutputArray = soa;
+    OpenBimRL::Engine::Functions::setOutputPointer = std::function(sop);
+    OpenBimRL::Engine::Functions::setOutputDouble = std::function(sod);
+    OpenBimRL::Engine::Functions::setOutputInt = std::function(soi);
+    OpenBimRL::Engine::Functions::setOutputString = std::function(sos);
+    OpenBimRL::Engine::Functions::setOutputArray = std::function(soa);
 }
