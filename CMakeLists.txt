@@ -16,25 +16,46 @@ FetchContent_Declare(
 set(MINIMAL_BUILD ON)
 # set(OCC_INCLUDE_DIR "/usr/include/opencascade")
 
+
 FetchContent_MakeAvailable(ifcopenshell)
-add_library(OpenBIMRL_Native SHARED library.cpp)
+
+
+add_library(OpenBIMRL_Native SHARED
+        utils/ifc_init.cpp
+        utils/ifc_pointer_to_string.cpp
+)
+
+set_property(TARGET OpenBIMRL_Native PROPERTY POSITION_INDEPENDENT_CODE ON)
+
 target_link_libraries(
-        OpenBIMRL_Native PRIVATE 
+        OpenBIMRL_Native PRIVATE
         IfcParse
-)       
-if (${CMAKE_BUILD_TYPE} EQUAL "RELEASE")
+)
+
+if ("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
         target_link_libraries(
-                OpenBIMRL_Native PRIVATE 
-                -static-libgcc 
+                OpenBIMRL_Native PRIVATE
+                -static-libgcc
                 -static-libstdc++
                 -static
-        ) 
+        )
+        target_compile_options(OpenBIMRL_Native PRIVATE
+                -fexceptions
+                -Wall
+                -Werror
+                -O3
+        )
+else ()
+        target_compile_options(OpenBIMRL_Native PRIVATE
+                -fexceptions
+                -Wall
+                -Werror
+        )
 endif()
 
 
 FetchContent_GetProperties(ifcopenshell)
 
-message(STATUS ${CMAKE_SOURCE_DIR})
 include_directories("${ifcopenshell_SOURCE_DIR}/src" "${CMAKE_SOURCE_DIR}/include")
 
 # tests
@@ -49,6 +70,8 @@ FetchContent_MakeAvailable(googletest)
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
 enable_testing()
+
+add_definitions( -DRESOURCES_DIR="${CMAKE_SOURCE_DIR}/test/resources" )
 
 add_executable(
         OpenBIMRL_Native_Test
