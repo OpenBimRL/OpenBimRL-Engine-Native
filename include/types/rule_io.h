@@ -24,15 +24,18 @@ typedef void (*set_output_string)(uint32_t, JNA::String);
 
 typedef JNA::Pointer (*set_output_array)(uint32_t, uint32_t);
 
-extern get_input_pointer getInputPointer;
-extern get_input_double getInputDouble;
-extern get_input_integer getInputInt;
-extern get_input_string getInputString;
+}
 
-extern set_output_pointer setOutputPointer;
-extern set_output_double setOutputDouble;
-extern set_output_integer setOutputInt;
-extern set_output_string setOutputString;
-extern set_output_array setOutputArray;
+namespace OpenBimRL::Engine::Functions {
+    extern OpenBimRL::Engine::Types::Function::get_input_pointer getInputPointer;
+    extern OpenBimRL::Engine::Types::Function::get_input_double getInputDouble;
+    extern OpenBimRL::Engine::Types::Function::get_input_integer getInputInt;
+    extern OpenBimRL::Engine::Types::Function::get_input_string getInputString;
+
+    extern OpenBimRL::Engine::Types::Function::set_output_pointer setOutputPointer;
+    extern OpenBimRL::Engine::Types::Function::set_output_double setOutputDouble;
+    extern OpenBimRL::Engine::Types::Function::set_output_integer setOutputInt;
+    extern OpenBimRL::Engine::Types::Function::set_output_string setOutputString;
+    extern OpenBimRL::Engine::Types::Function::set_output_array setOutputArray;
 }
 #endif // OPENBIMRL_NATIVE_RULE_IO_H

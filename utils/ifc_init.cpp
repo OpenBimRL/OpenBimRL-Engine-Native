@@ -5,6 +5,7 @@
 #include <ifcparse/IfcFile.h>
 
 static IfcParse::IfcFile *currentFile;
+static bool silent = false;
 
 // hopefully this doesn't leak memory... ¯\_(ツ)_/¯
 static void setCurrentFile(IfcParse::IfcFile *newFile)
@@ -14,10 +15,19 @@ static void setCurrentFile(IfcParse::IfcFile *newFile)
     currentFile = newFile;
 }
 
+IfcParse::IfcFile *OpenBimRL::Engine::Utils::getCurrentFile() {
+    return currentFile;
+}
+
+void OpenBimRL::Engine::Utils::setSilent(bool s) {
+    silent = s;
+}
+
 [[maybe_unused]]
 bool initIfc(JNA::String fileName) {
 
-    Logger::SetOutput(&std::cout, &std::cout);
+    if (!silent)
+        Logger::SetOutput(&std::cout, &std::cout);
 
     if (!fileName)
     {

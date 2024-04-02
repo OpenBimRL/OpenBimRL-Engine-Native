@@ -6,6 +6,7 @@
 namespace OpenBimRL::Engine::Utils {
     bool isIFC4();
     bool isIFC2x3();
+    void setSilent(bool);
     IfcParse::IfcFile *getCurrentFile();
 }
 

@@ -4,8 +4,8 @@
 #include "types.h"
 
 extern "C" {
-void filterByElement(void);
-void filterByGUID(void);
+[[maybe_unused]] [[maybe_unused]] void filterByElement(void);
+[[maybe_unused]] void filterByGUID(void);
 void getBoundingBox(void);
 }
 
