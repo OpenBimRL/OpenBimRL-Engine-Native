@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.25)
 project(OpenBIMRL_Native)
 
 include(FetchContent)
@@ -17,17 +17,25 @@ set(MINIMAL_BUILD ON)
 # set(OCC_INCLUDE_DIR "/usr/include/opencascade")
 
 FetchContent_MakeAvailable(ifcopenshell)
-
-add_library(OpenBIMRL_Native STATIC library.cpp)
-
+add_library(OpenBIMRL_Native SHARED library.cpp)
 target_link_libraries(
-        OpenBIMRL_Native
-        PRIVATE IfcParse
-)
+        OpenBIMRL_Native PRIVATE 
+        IfcParse
+)       
+if (${CMAKE_BUILD_TYPE} EQUAL "RELEASE")
+        target_link_libraries(
+                OpenBIMRL_Native PRIVATE 
+                -static-libgcc 
+                -static-libstdc++
+                -static
+        ) 
+endif()
+
 
 FetchContent_GetProperties(ifcopenshell)
 
-include_directories("${ifcopenshell_SOURCE_DIR}/src")
+message(STATUS ${CMAKE_SOURCE_DIR})
+include_directories("${ifcopenshell_SOURCE_DIR}/src" "${CMAKE_SOURCE_DIR}/include")
 
 # tests
 
@@ -44,7 +52,7 @@ enable_testing()
 
 add_executable(
         OpenBIMRL_Native_Test
-        test/test.cpp
+        test/src/test.cpp
 )
 target_link_libraries(
         OpenBIMRL_Native_Test
