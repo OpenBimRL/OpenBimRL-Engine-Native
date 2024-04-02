@@ -19,8 +19,14 @@
   "customizations" : {
     "jetbrains" : {
       "backend" : "CLion"
-    }
-  },
+	},
+	"vscode": {
+		"extensions": [
+			"ms-vscode.cpptools-extension-pack",
+			"ms-vscode.cmake-tools"
+		]
+	}
+  }
 
 	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
 	// "remoteUser": "root"
