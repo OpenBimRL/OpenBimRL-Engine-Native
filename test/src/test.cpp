@@ -50,3 +50,51 @@ TEST(Functions, FilterByGUID) {
 
     filterByGUID();
 }
+
+TEST(Functions, FilterByElement) {
+    const auto type = "IfcSpace";
+    const auto getType = [=](uint32_t) { return type; };
+    const auto setPointer = [](uint32_t, void *) { FAIL() << "returned null pointer!"; };
+    void *buffer;
+    std::size_t elements = 0;
+    const auto setOutputArray = [&buffer, &elements](uint32_t position, std::size_t size) {
+        buffer = calloc(size, sizeof(void *));
+        elements = size;
+        return buffer;
+    };
+
+    OpenBimRL::Engine::Functions::getInputPointer = nullptr;
+    OpenBimRL::Engine::Functions::getInputDouble = nullptr;
+    OpenBimRL::Engine::Functions::getInputInt = nullptr;
+    OpenBimRL::Engine::Functions::getInputString = std::function(getType);
+
+    OpenBimRL::Engine::Functions::setOutputPointer = std::function(setPointer);
+    OpenBimRL::Engine::Functions::setOutputDouble = nullptr;
+    OpenBimRL::Engine::Functions::setOutputInt = nullptr;
+    OpenBimRL::Engine::Functions::setOutputString = nullptr;
+    OpenBimRL::Engine::Functions::setOutputArray = std::function(setOutputArray);
+
+    filterByElement();
+
+
+    if (!buffer) {
+        FAIL();
+    }
+
+    const auto elementArray = (IfcUtil::IfcBaseClass **) buffer;
+
+    ASSERT_EQ(elements, 326);
+
+    for (std::size_t i = 0; i < elements; ++i) {
+        try {
+            const auto element = elementArray[i]->as<Ifc4::IfcSpace>(true);
+            const auto className = element->data().type()->name();
+            if (className != "IfcSpace")
+                FAIL() << "Element is not of type IfcSpace. Instead it is an: " << className;
+        } catch (IfcParse::IfcException &e) {
+            FAIL() << "Element was not of type IfcSpace. While parsing this error occurred: " << e.what();
+        }
+    }
+
+    free(buffer);
+}
