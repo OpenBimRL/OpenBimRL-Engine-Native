@@ -6,6 +6,11 @@ include(FetchContent)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+
+# configure IfcOpenShell
+set(MINIMAL_BUILD ON)
+
 FetchContent_Declare(
         ifcopenshell
         GIT_REPOSITORY https://github.com/IfcOpenShell/IfcOpenShell.git
@@ -13,7 +18,6 @@ FetchContent_Declare(
         SOURCE_SUBDIR  cmake
 )
 
-set(MINIMAL_BUILD ON)
 # set(OCC_INCLUDE_DIR "/usr/include/opencascade")
 
 
