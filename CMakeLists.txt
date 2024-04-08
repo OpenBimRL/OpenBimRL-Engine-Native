@@ -23,6 +23,8 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(ifcopenshell)
 
+FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz)
+FetchContent_MakeAvailable(json)
 
 add_library(OpenBIMRL_Native SHARED
         utils/ifc_init.cpp
@@ -37,6 +39,7 @@ set_property(TARGET OpenBIMRL_Native PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(
         OpenBIMRL_Native PRIVATE
         IfcParse
+        nlohmann_json::nlohmann_json
 )
 
 if ("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
