@@ -32,6 +32,8 @@ add_library(OpenBIMRL_Native SHARED
         functions/filter_by_element.cpp
         functions/function.cpp
         functions/filter_by_guid.cpp
+        utils/ifc_serializer.cpp
+        utils/ifc_data.cpp
 )
 
 set_property(TARGET OpenBIMRL_Native PROPERTY POSITION_INDEPENDENT_CODE ON)
@@ -59,7 +61,6 @@ else ()
         target_compile_options(OpenBIMRL_Native PRIVATE
                 -fexceptions
                 -Wall
-                -Werror
         )
 endif()
 

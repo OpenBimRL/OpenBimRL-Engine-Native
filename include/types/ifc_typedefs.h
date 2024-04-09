@@ -6,12 +6,14 @@
 namespace OpenBimRL::Engine::Types::IFC {
     typedef IfcUtil::IfcBaseClass *IfcObjectPointer;
     typedef std::map<std::string, std::string> property;
-    typedef std::map<std::string, property> property_sets;
+    typedef std::map<std::string, double> quantity;
+    typedef std::map<std::string, property> pSet;
+    typedef std::map<std::string, quantity> qSet;
     typedef struct {
-        std::string name;
-        std::string type;
+        std::string ifcClass;
         std::string GUID;
-        property_sets propertySets;
+        pSet propertySets;
+        qSet quantitySets;
     } IfcData;
 }
 #endif // OPENBIMRL_NATIVE_IFC_TYPEDEFS_H

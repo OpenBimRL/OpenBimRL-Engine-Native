@@ -9,7 +9,7 @@
 TEST(IFC4, LoadFile) {
     OpenBimRL::Engine::Utils::setSilent(true);
 
-    const auto init = initIfc(std::filesystem::path(RESOURCES_DIR).append("test.ifc").c_str());
+    const auto init = initIfc(std::filesystem::path(RESOURCES_DIR).append("correct.ifc").c_str());
 
     ASSERT_TRUE(init);
 }
@@ -29,11 +29,11 @@ TEST(Functions, FilterByGUID) {
         if (!result)
             FAIL() << "filterByGUID returned null pointer!";
         try {
-            const auto ifcItem = dynamic_cast<Ifc4::IfcObject *>((IfcUtil::IfcBaseClass *)(result));
+            const auto ifcItem = ((IfcUtil::IfcBaseClass *)(result))->as<Ifc4::IfcObject>(true);
             const auto itemGUID = ifcItem->GlobalId();
             EXPECT_EQ(itemGUID.compare(guid), 0) << "GUIDs: [" + itemGUID + ", " + guid + "] do not match!";
         }
-        catch (std::exception &e) {
+        catch (IfcParse::IfcException &e) {
             FAIL() << e.what();
         }
     };
@@ -97,4 +97,22 @@ TEST(Functions, FilterByElement) {
     }
 
     free(buffer);
+}
+
+TEST(Serializer, Serialize) {
+    const auto type = "IfcSpace";
+    IfcParse::IfcFile *file = OpenBimRL::Engine::Utils::getCurrentFile(); // get active file
+    boost::shared_ptr<aggregate_of_instance> ptr;
+    try
+    {
+        ptr = file->instances_by_type(type); // find ifc obj by guid
+    }
+        // thank you IfcOpenShell for documenting that this error exists...
+    catch (const IfcParse::IfcException &)
+    {
+    }
+
+    for (const auto item : (*ptr)) {
+        request_ifc_object_json_size(item);
+    }
 }
