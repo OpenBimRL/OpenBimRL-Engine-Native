@@ -18,14 +18,6 @@ std::string getPropValue(const Ifc4::IfcValue *prop);
 double getQuantityValue(const Ifc4::IfcPhysicalQuantity *quantity);
 
 Ifc4::IfcValue *handleEnumeratedProperty(boost::optional<boost::shared_ptr<Ifc4::IfcValue::list>> optional);
-inline Ifc4::IfcValue *findValue(const Ifc4::IfcProperty *property) {
-    if (const auto item = property->as<Ifc4::IfcPropertySingleValue>())
-        return item->NominalValue();
-
-    if (const auto item = property->as<Ifc4::IfcPropertyEnumeratedValue>())
-        return handleEnumeratedProperty(item->EnumerationValues());
-
-    return nullptr;
-}
+Ifc4::IfcValue *findValue(const Ifc4::IfcProperty *property);
 
 #endif //OPENBIMRL_NATIVE_IFC_DATA_UTILS_H

@@ -15,3 +15,13 @@ Ifc4::IfcValue *handleEnumeratedProperty(const boost::optional<boost::shared_ptr
     return nullptr;
 
 }
+
+Ifc4::IfcValue *findValue(const Ifc4::IfcProperty *property) {
+    if (const auto item = property->as<Ifc4::IfcPropertySingleValue>())
+        return item->NominalValue();
+
+    if (const auto item = property->as<Ifc4::IfcPropertyEnumeratedValue>())
+        return handleEnumeratedProperty(item->EnumerationValues());
+
+    return nullptr;
+}

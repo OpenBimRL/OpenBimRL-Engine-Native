@@ -19,7 +19,6 @@ void handlePSet(const Ifc4::IfcPropertySet *set) {
 
         const auto propVal = getPropValue(propIfcVal);
         pSet[setName][propName] = propVal;
-        std::cout << prop->Name() << " : " << propVal << std::endl;
     }
 }
 
@@ -45,5 +44,5 @@ void handleSetDefSelect(const Ifc4::IfcPropertySetDefinitionSelect *select) {
         return;
     }
 
-    std::cout << "this script doesn't handle " << select->data().type()->name() << std::endl;
+    std::cerr << "this script doesn't handle " << select->data().type()->name() << std::endl;
 }
