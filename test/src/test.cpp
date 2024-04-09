@@ -113,6 +113,10 @@ TEST(Serializer, Serialize) {
     }
 
     for (const auto item : (*ptr)) {
-        request_ifc_object_json_size(item);
+        const auto size = request_ifc_object_json_size(item);
+        auto str = (char *)std::calloc(size + 1, 1);
+        ifc_object_to_json(str);
+        // std::cout << std::string(str) << std::endl;
+        std::free(str);
     }
 }
