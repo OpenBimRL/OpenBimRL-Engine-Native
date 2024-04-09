@@ -92,7 +92,8 @@ namespace OpenBimRL::Engine::Utils {
                     .ifcClass = ifcItem->data().type()->name(),
                     .GUID = ifcItem->GlobalId()
             };
-        } else if (isIFC4()) {
+        }
+        if (isIFC4()) {
             const auto ifcItem = ifcPointer->as<Ifc4::IfcObject>();
             return {
                     .ifcClass = ifcItem->data().type()->name(),

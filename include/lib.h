@@ -7,8 +7,6 @@
 extern "C" {
 using namespace OpenBimRL::Engine::Types;
 
-[[maybe_unused]] bool ifc_object_to_string(JNA::Pointer, JNA::Pointer, std::size_t);
-
 [[maybe_unused]] std::size_t request_ifc_object_json_size(JNA::Pointer);
 [[maybe_unused]] void ifc_object_to_json(JNA::Pointer, JNA::Pointer);
 

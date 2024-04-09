@@ -27,11 +27,10 @@ FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download
 FetchContent_MakeAvailable(json)
 
 add_library(OpenBIMRL_Native SHARED
-        utils/ifc_init.cpp
-        utils/ifc_pointer_to_string.cpp
         functions/filter_by_element.cpp
         functions/function.cpp
         functions/filter_by_guid.cpp
+        utils/ifc_init.cpp
         utils/ifc_serializer.cpp
         utils/ifc_data.cpp
 )
