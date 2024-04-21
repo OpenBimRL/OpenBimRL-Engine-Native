@@ -2,9 +2,9 @@
 #include "lib.h"
 
 #include <iostream>
-#include <ifcparse/IfcFile.h>
 
 static IfcParse::IfcFile *currentFile;
+// static IfcGeom::Kernel *kernel;
 static bool silent = false;
 
 // hopefully this doesn't leak memory... ¯\_(ツ)_/¯
@@ -12,8 +12,16 @@ static void setCurrentFile(IfcParse::IfcFile *newFile)
 {
     // clang-tidy: if not necessary due to deleting null pointer has no effect
     delete currentFile;
+    // delete kernel;
     currentFile = newFile;
 }
+
+/*IfcGeom::Kernel *OpenBimRL::Engine::Utils::getKernel() {
+  if (kernel) return kernel;
+  // it can be safely assumed that currentFile is not null since otherwise there
+  // would be bigger problems!
+  return (kernel = new IfcGeom::Kernel(currentFile));
+}*/
 
 IfcParse::IfcFile *OpenBimRL::Engine::Utils::getCurrentFile() {
     return currentFile;
