@@ -12,6 +12,7 @@ find_package(HDF5 REQUIRED)
 
 # configure IfcOpenShell
 set(MINIMAL_BUILD ON)
+set(SCHEMA_VERSIONS 2x3 4)
 
 FetchContent_Declare(
         json
@@ -55,7 +56,7 @@ target_link_libraries(
         ${HDF5_LIBRARIES}
 )
 
-target_include_directories(OpenBIMRL_Native PRIVATE "/usr/include/opencascade" ${HDF5_INCLUDE_DIRS})
+target_include_directories(OpenBIMRL_Native PRIVATE ${HDF5_INCLUDE_DIRS})
 
 if ("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
         target_link_libraries(
@@ -80,7 +81,7 @@ endif()
 
 FetchContent_GetProperties(ifcopenshell)
 
-include_directories("${ifcopenshell_SOURCE_DIR}/src" "${CMAKE_SOURCE_DIR}/include")
+include_directories("${ifcopenshell_SOURCE_DIR}/src" "${CMAKE_SOURCE_DIR}/include" "/usr/include/opencascade")
 
 # tests
 
