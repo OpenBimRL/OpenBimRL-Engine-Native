@@ -8,13 +8,22 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
+find_package(HDF5 REQUIRED)
+
 # configure IfcOpenShell
 set(MINIMAL_BUILD ON)
+set(SCHEMA_VERSIONS 2x3 4)
+
+FetchContent_Declare(
+        json
+        URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
+)
+FetchContent_MakeAvailable(json)
 
 FetchContent_Declare(
         ifcopenshell
         GIT_REPOSITORY https://github.com/IfcOpenShell/IfcOpenShell.git
-        GIT_TAG cd5afacc979e6ffea2abd20e69e9e07b6fa90e2e
+        GIT_TAG 60a70f5236528eaad63a1bb9109044d04a108679
         SOURCE_SUBDIR  cmake
 )
 
@@ -22,9 +31,6 @@ FetchContent_Declare(
 
 
 FetchContent_MakeAvailable(ifcopenshell)
-
-FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz)
-FetchContent_MakeAvailable(json)
 
 add_library(OpenBIMRL_Native SHARED
         functions/filter_by_element.cpp
@@ -37,6 +43,7 @@ add_library(OpenBIMRL_Native SHARED
         utils/ifc_data_getters.cpp
         utils/ifc_data_handlers.cpp
         utils/ifc_data_utils.cpp
+        functions/get_bounding_box.cpp
 )
 
 set_property(TARGET OpenBIMRL_Native PROPERTY POSITION_INDEPENDENT_CODE ON)
@@ -44,8 +51,12 @@ set_property(TARGET OpenBIMRL_Native PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(
         OpenBIMRL_Native PRIVATE
         IfcParse
+        IfcGeom_ifc4
         nlohmann_json::nlohmann_json
+        ${HDF5_LIBRARIES}
 )
+
+target_include_directories(OpenBIMRL_Native PRIVATE ${HDF5_INCLUDE_DIRS})
 
 if ("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
         target_link_libraries(
@@ -70,7 +81,7 @@ endif()
 
 FetchContent_GetProperties(ifcopenshell)
 
-include_directories("${ifcopenshell_SOURCE_DIR}/src" "${CMAKE_SOURCE_DIR}/include")
+include_directories("${ifcopenshell_SOURCE_DIR}/src" "${CMAKE_SOURCE_DIR}/include" "/usr/include/opencascade")
 
 # tests
 

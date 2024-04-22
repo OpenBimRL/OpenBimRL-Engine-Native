@@ -99,6 +99,20 @@ TEST(Functions, FilterByElement) {
     free(buffer);
 }
 
+TEST(Functions, GetBoundingBox) {
+
+  IfcParse::IfcFile *file = OpenBimRL::Engine::Utils::getCurrentFile(); // get active file
+  auto counter = 0;
+
+  OpenBimRL::Engine::Functions::getInputPointer = std::function([file, &counter](uint32_t){return (void *)(*(file->instances_by_type("IfcSpace")->begin() + counter));});
+  OpenBimRL::Engine::Functions::getInputDouble = nullptr;
+  OpenBimRL::Engine::Functions::getInputInt = nullptr;
+  OpenBimRL::Engine::Functions::getInputString = nullptr;
+
+  for (counter; counter < 200; counter++)
+    getBoundingBox();
+}
+
 TEST(Serializer, Serialize) {
     const auto type = "IfcSpace";
     IfcParse::IfcFile *file = OpenBimRL::Engine::Utils::getCurrentFile(); // get active file
