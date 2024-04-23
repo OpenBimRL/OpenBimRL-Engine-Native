@@ -1,5 +1,6 @@
 #include <ifcparse/Ifc4.h>
 
+#include <Bnd_Box.hxx>
 #include <BRepBndLib.hxx>
 
 #include "functions.h"
