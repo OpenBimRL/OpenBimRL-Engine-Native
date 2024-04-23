@@ -8,11 +8,20 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
-find_package(HDF5 REQUIRED)
-
 # configure IfcOpenShell
-set(MINIMAL_BUILD ON)
-set(SCHEMA_VERSIONS 2x3 4)
+set(BUILD_GEOMSERVER OFF)
+set(BUILD_IFCPYTHON OFF)
+set(COLLADA_SUPPORT OFF)
+set(GLTF_SUPPORT OFF)
+set(IFCXML_SUPPORT OFF)
+set(USD_SUPPORT OFF)
+set(HDF5_SUPPORT ON)
+set(BUILD_IFCGEOM ON)
+
+set(SCHEMA_VERSIONS "2x3" "4")
+
+set(GMP_LIBRARY_DIR "/usr/lib/x86_64-linux-gnu")
+set(MPFR_LIBRARY_DIR ${GMP_LIBRARY_DIR})
 
 FetchContent_Declare(
         json
@@ -27,8 +36,7 @@ FetchContent_Declare(
         SOURCE_SUBDIR  cmake
 )
 
-# set(OCC_INCLUDE_DIR "/usr/include/opencascade")
-
+find_package(HDF5 REQUIRED)
 
 FetchContent_MakeAvailable(ifcopenshell)
 
@@ -49,16 +57,15 @@ add_library(OpenBIMRL_Native SHARED
 set_property(TARGET OpenBIMRL_Native PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 target_link_libraries(
-        OpenBIMRL_Native PRIVATE
-        IfcParse
-        IfcGeom_ifc4
+        OpenBIMRL_Native PUBLIC
         nlohmann_json::nlohmann_json
-        ${HDF5_LIBRARIES}
+        IfcParse
+        IfcGeom
+        IfcGeom_ifc4
+        IfcGeom_ifc2x3
 )
 
-target_include_directories(OpenBIMRL_Native PRIVATE ${HDF5_INCLUDE_DIRS})
-
-if ("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
+#[[if ("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
         target_link_libraries(
                 OpenBIMRL_Native PRIVATE
                 -static-libgcc
@@ -75,13 +82,14 @@ else ()
         target_compile_options(OpenBIMRL_Native PRIVATE
                 -fexceptions
                 -Wall
+                -static
         )
-endif()
+endif()]]
 
 
 FetchContent_GetProperties(ifcopenshell)
 
-include_directories("${ifcopenshell_SOURCE_DIR}/src" "${CMAKE_SOURCE_DIR}/include" "/usr/include/opencascade")
+include_directories("${ifcopenshell_SOURCE_DIR}/src" "${CMAKE_SOURCE_DIR}/include" ${HDF5_INCLUDE_DIRS} "/usr/include/opencascade" "/usr/include/oce")
 
 # tests
 
@@ -102,8 +110,9 @@ add_executable(
         OpenBIMRL_Native_Test
         test/src/test.cpp
 )
+
 target_link_libraries(
-        OpenBIMRL_Native_Test
+        OpenBIMRL_Native_Test PRIVATE
         OpenBIMRL_Native
         GTest::gtest_main
 )
