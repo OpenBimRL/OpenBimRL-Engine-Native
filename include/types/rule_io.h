@@ -22,7 +22,7 @@ namespace OpenBimRL::Engine::Types::Functions {
 
     typedef void (*set_output_string)(uint32_t, JNA::String);
 
-    typedef JNA::Pointer (*set_output_array)(uint32_t, uint32_t);
+    typedef JNA::Pointer (*set_output_array)(uint32_t, std::size_t);
 
 }
 
@@ -39,6 +39,6 @@ namespace OpenBimRL::Engine::Functions {
     extern std::function<void(uint32_t, double)> setOutputDouble;
     extern std::function<void(uint32_t, uint32_t)> setOutputInt;
     extern std::function<void(uint32_t, JNA::String)> setOutputString;
-    extern std::function<JNA::Pointer(uint32_t, uint32_t)> setOutputArray;
+    extern std::function<JNA::Pointer(uint32_t, std::size_t)> setOutputArray;
 }
 #endif // OPENBIMRL_NATIVE_RULE_IO_H

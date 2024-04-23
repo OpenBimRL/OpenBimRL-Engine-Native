@@ -13,7 +13,7 @@ namespace OpenBimRL::Engine::Functions
     std::function<void(uint32_t, double)> setOutputDouble;
     std::function<void(uint32_t, uint32_t)> setOutputInt;
     std::function<void(uint32_t, JNA::String)> setOutputString;
-    std::function<JNA::Pointer(uint32_t, uint32_t)> setOutputArray;
+    std::function<JNA::Pointer(uint32_t, std::size_t)> setOutputArray;
 }
 
 void init_function(get_input_pointer gip,

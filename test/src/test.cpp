@@ -58,7 +58,7 @@ TEST(Functions, FilterByElement) {
     void *buffer;
     std::size_t elements = 0;
     const auto setOutputArray = [&buffer, &elements](uint32_t position, std::size_t size) {
-        buffer = calloc(size, sizeof(void *));
+        buffer = calloc(size, 1);
         elements = size;
         return buffer;
     };
