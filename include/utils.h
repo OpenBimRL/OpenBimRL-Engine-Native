@@ -1,31 +1,31 @@
 #ifndef OPENBIMRL_NATIVE_UTILS_H
 #define OPENBIMRL_NATIVE_UTILS_H
-#include "types.h"
-
-#include <string>
-#include <iostream>
 #include <fstream>
+#include <iostream>
+#include <string>
 
-#include <ifcparse/Ifc4.h>
-#define IfcSchema Ifc4
+#include "types.h"
 
 #define SCHEMA_VERSIONS (2x3)(4)
 #define SCHEMA_SEQ (2x3)(4)
 
-#include <ifcparse/IfcBaseClass.h>
-#include <ifcparse/IfcHierarchyHelper.h>
-#include <ifcgeom/IfcGeom.h>
+#include <ifcgeom_schema_agnostic/IfcGeomElement.h>
+#include <ifcgeom_schema_agnostic/Kernel.h>
 
+#include <TopoDS_Compound.hxx>
 
 namespace OpenBimRL::Engine::Utils {
-    bool isIFC4();
-    bool isIFC2x3();
-    void setSilent(bool);
-    IfcParse::IfcFile *getCurrentFile();
+bool isIFC4();
+bool isIFC2x3();
+void setSilent(bool);
+IfcParse::IfcFile* getCurrentFile();
+TopoDS_Compound create_shape(IfcGeom::IteratorSettings&,
+             IfcUtil::IfcBaseClass*,
+             IfcUtil::IfcBaseClass* = nullptr);
 
-    using namespace OpenBimRL::Engine::Types;
-    IFC::IfcData getData(IFC::IfcObjectPointer);
-    void populateProperties(IFC::IfcData&, IFC::IfcObjectPointer);
-}
+using namespace OpenBimRL::Engine::Types;
+IFC::IfcData getData(IFC::IfcObjectPointer);
+void populateProperties(IFC::IfcData&, IFC::IfcObjectPointer);
+}  // namespace OpenBimRL::Engine::Utils
 
-#endif //OPENBIMRL_NATIVE_UTILS_H
+#endif  // OPENBIMRL_NATIVE_UTILS_H

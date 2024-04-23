@@ -52,6 +52,7 @@ add_library(OpenBIMRL_Native SHARED
         utils/ifc_data_handlers.cpp
         utils/ifc_data_utils.cpp
         functions/get_bounding_box.cpp
+        utils/ifc_wrap.cpp
 )
 
 set_property(TARGET OpenBIMRL_Native PROPERTY POSITION_INDEPENDENT_CODE ON)
