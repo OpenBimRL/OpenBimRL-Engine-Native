@@ -8,6 +8,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-undefined" )
+set(BUILD_SHARED_LIBS ON)
+
 # configure IfcOpenShell
 set(BUILD_GEOMSERVER OFF)
 set(BUILD_IFCPYTHON OFF)
@@ -44,6 +47,7 @@ add_library(OpenBIMRL_Native SHARED
         functions/filter_by_element.cpp
         functions/function.cpp
         functions/filter_by_guid.cpp
+        functions/get_bounding_box.cpp
         utils/ifc_init.cpp
         utils/ifc_serializer.cpp
         utils/ifc_data.cpp
@@ -51,42 +55,19 @@ add_library(OpenBIMRL_Native SHARED
         utils/ifc_data_getters.cpp
         utils/ifc_data_handlers.cpp
         utils/ifc_data_utils.cpp
-        functions/get_bounding_box.cpp
         utils/ifc_wrap.cpp
 )
 
 set_property(TARGET OpenBIMRL_Native PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 target_link_libraries(
-        OpenBIMRL_Native PUBLIC
-        nlohmann_json::nlohmann_json
-        IfcParse
-        IfcGeom
-        IfcGeom_ifc4
-        IfcGeom_ifc2x3
+        OpenBIMRL_Native
+        PUBLIC nlohmann_json::nlohmann_json
+        PUBLIC IfcParse
+        PUBLIC IfcGeom
+        PUBLIC IfcGeom_ifc4
+        PUBLIC IfcGeom_ifc2x3
 )
-
-#[[if ("${CMAKE_BUILD_TYPE}" STREQUAL "RELEASE")
-        target_link_libraries(
-                OpenBIMRL_Native PRIVATE
-                -static-libgcc
-                -static-libstdc++
-                -static
-        )
-        target_compile_options(OpenBIMRL_Native PRIVATE
-                -fexceptions
-                -Wall
-                -Werror
-                -O3
-        )
-else ()
-        target_compile_options(OpenBIMRL_Native PRIVATE
-                -fexceptions
-                -Wall
-                -static
-        )
-endif()]]
-
 
 FetchContent_GetProperties(ifcopenshell)
 
