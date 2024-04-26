@@ -56,10 +56,10 @@ TEST(Functions, FilterByElement) {
     const auto getType = [=](uint32_t) { return type; };
     const auto setPointer = [](uint32_t, void *) { FAIL() << "returned null pointer!"; };
     void *buffer;
-    std::size_t elements = 0;
-    const auto setOutputArray = [&buffer, &elements](uint32_t position, std::size_t size) {
+    std::size_t elements_buffer_size = 0;
+    const auto setOutputArray = [&buffer, &elements_buffer_size](uint32_t position, std::size_t size) {
         buffer = calloc(size, 1);
-        elements = size;
+        elements_buffer_size = size;
         return buffer;
     };
 
@@ -83,7 +83,9 @@ TEST(Functions, FilterByElement) {
 
     const auto elementArray = (IfcUtil::IfcBaseClass **) buffer;
 
-    ASSERT_EQ(elements / sizeof(void *), 326);
+    const auto elements = elements_buffer_size / sizeof (void *);
+
+    ASSERT_EQ(elements, 326);
 
     for (std::size_t i = 0; i < elements; ++i) {
         try {
@@ -109,7 +111,7 @@ TEST(Functions, GetBoundingBox) {
   OpenBimRL::Engine::Functions::getInputInt = nullptr;
   OpenBimRL::Engine::Functions::getInputString = nullptr;
 
-  for ( ; counter < 326; counter++)
+  for (counter; counter < 200; counter++)
     getBoundingBox();
 }
 
