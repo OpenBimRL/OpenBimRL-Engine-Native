@@ -83,7 +83,7 @@ TEST(Functions, FilterByElement) {
 
     const auto elementArray = (IfcUtil::IfcBaseClass **) buffer;
 
-    ASSERT_EQ(elements, 326);
+    ASSERT_EQ(elements / sizeof(void *), 326);
 
     for (std::size_t i = 0; i < elements; ++i) {
         try {
@@ -109,7 +109,7 @@ TEST(Functions, GetBoundingBox) {
   OpenBimRL::Engine::Functions::getInputInt = nullptr;
   OpenBimRL::Engine::Functions::getInputString = nullptr;
 
-  for (counter; counter < 200; counter++)
+  for ( ; counter < 326; counter++)
     getBoundingBox();
 }
 
