@@ -14,12 +14,12 @@ message("CMake is set to build for: ${CMAKE_BUILD_TYPE}")
 
 set(CMAKE_CXX_FLAGS "-Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-O2")
+set(CMAKE_CXX_FLAGS_RELEASE "-O0")
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-undefined" )
-set(BUILD_SHARED_LIBS ON)
+# set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-undefined" )
+set(BUILD_SHARED_LIBS OFF)
 
 # configure IfcOpenShell
 set(BUILD_GEOMSERVER OFF)
@@ -72,6 +72,23 @@ set_property(TARGET OpenBIMRL_Native PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 target_link_libraries(
         OpenBIMRL_Native
+        PUBLIC TKernel 
+        PUBLIC TKMath 
+        PUBLIC TKBRep 
+        PUBLIC TKGeomBase 
+        PUBLIC TKGeomAlgo 
+        PUBLIC TKG3d 
+        PUBLIC TKG2d 
+        PUBLIC TKShHealing 
+        PUBLIC TKTopAlgo 
+        PUBLIC TKMesh 
+        PUBLIC TKPrim 
+        PUBLIC TKBool 
+        PUBLIC TKBO
+        PUBLIC TKFillet 
+        PUBLIC TKXSBase 
+        PUBLIC TKOffset 
+        PUBLIC TKHLR
         PUBLIC nlohmann_json::nlohmann_json
         PUBLIC IfcParse
         PUBLIC IfcGeom
