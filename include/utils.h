@@ -23,6 +23,8 @@ TopoDS_Compound create_shape(IfcGeom::IteratorSettings&,
              IfcUtil::IfcBaseClass*,
              IfcUtil::IfcBaseClass* = nullptr);
 
+std::optional<TopoDS_Compound> create_shape_default(IfcUtil::IfcBaseClass*);
+
 using namespace OpenBimRL::Engine::Types;
 IFC::IfcData getData(IFC::IfcObjectPointer);
 void populateProperties(IFC::IfcData&, IFC::IfcObjectPointer);

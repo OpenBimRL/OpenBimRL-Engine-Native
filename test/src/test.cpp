@@ -115,6 +115,13 @@ TEST(Functions, GetBoundingBox) {
     getBoundingBox();
 }
 
+TEST(Utils, Polygon) {
+  IfcParse::IfcFile *file = OpenBimRL::Engine::Utils::getCurrentFile();
+  const auto someSpace = (*(file->instances_by_type("IfcSpace")->begin()));
+
+  const auto size = request_geometry_polygon(someSpace);
+}
+
 TEST(Serializer, Serialize) {
     const auto type = "IfcSpace";
     IfcParse::IfcFile *file = OpenBimRL::Engine::Utils::getCurrentFile(); // get active file

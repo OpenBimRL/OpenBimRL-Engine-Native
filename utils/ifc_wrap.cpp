@@ -77,8 +77,7 @@ static TopoDS_Compound helper_fn_create_shape(
       }
     }
 
-    auto* product =
-        (typename Schema::IfcProduct*)instance;
+    auto* product = (typename Schema::IfcProduct*)instance;
 
     if (!representation && !product->Representation()) {
       throw IfcParse::IfcException("Representation is NULL");
@@ -93,8 +92,7 @@ static TopoDS_Compound helper_fn_create_shape(
 
     if (!ifc_representation) {
       // First, try to find a representation based on the settings
-      for (auto it = reps->begin();
-           it != reps->end(); ++it) {
+      for (auto it = reps->begin(); it != reps->end(); ++it) {
         typename Schema::IfcRepresentation* rep = *it;
         if (!rep->RepresentationIdentifier()) {
           continue;
@@ -118,8 +116,7 @@ static TopoDS_Compound helper_fn_create_shape(
 
     // Otherwise, find a representation within the 'Model' or 'Plan' context
     if (!ifc_representation) {
-      for (auto it = reps->begin();
-           it != reps->end(); ++it) {
+      for (auto it = reps->begin(); it != reps->end(); ++it) {
         typename Schema::IfcRepresentation* rep = *it;
         typename Schema::IfcRepresentationContext* context =
             rep->ContextOfItems();
@@ -215,6 +212,55 @@ static TopoDS_Compound helper_fn_create_shape(
     }
   }
   return {};
+}
+
+std::optional<TopoDS_Compound> OpenBimRL::Engine::Utils::create_shape_default(
+    IfcUtil::IfcBaseClass* ifcObject) {
+  if (isIFC4()) {
+    const auto product = ifcObject->as<Ifc4::IfcProduct>();
+
+    if (!product) return std::nullopt;
+    const auto representation = product->Representation();
+
+    // configure geometry generator settings
+    IfcGeom::IteratorSettings settings;
+    settings.set(IfcGeom::IteratorSettings::USE_WORLD_COORDS, true);
+    settings.set(IfcGeom::IteratorSettings::WELD_VERTICES, false);
+    settings.set(IfcGeom::IteratorSettings::DISABLE_TRIANGULATION, false);
+    settings.set(IfcGeom::IteratorSettings::APPLY_DEFAULT_MATERIALS, true);
+    // we don't need normals for simple point geometry
+    settings.set(IfcGeom::IteratorSettings::NO_NORMALS, true);
+
+    const auto representation_list = representation->Representations();
+
+    // take the first (and most of the time the only) representation
+    const auto some_representation = *(representation_list->begin());
+
+    return {create_shape(settings, product, some_representation)};
+  } else if (isIFC2x3()) {
+    const auto product = ifcObject->as<Ifc2x3::IfcProduct>();
+
+    if (!product) return std::nullopt;
+    const auto representation = product->Representation();
+
+    // configure geometry generator settings
+    IfcGeom::IteratorSettings settings;
+    settings.set(IfcGeom::IteratorSettings::USE_WORLD_COORDS, true);
+    settings.set(IfcGeom::IteratorSettings::WELD_VERTICES, false);
+    settings.set(IfcGeom::IteratorSettings::DISABLE_TRIANGULATION, false);
+    settings.set(IfcGeom::IteratorSettings::APPLY_DEFAULT_MATERIALS, true);
+    // we don't need normals for simple point geometry
+    settings.set(IfcGeom::IteratorSettings::NO_NORMALS, true);
+
+    const auto representation_list = representation->Representations();
+
+    // take the first (and most of the time the only) representation
+    const auto some_representation = *(representation_list->begin());
+
+    return {create_shape(settings, product, some_representation)};
+  }
+
+  return std::nullopt;
 }
 
 TopoDS_Compound OpenBimRL::Engine::Utils::create_shape(
