@@ -1,4 +1,5 @@
 #include <iostream>
+
 #include "./ifc_data_utils.h"
 
 void handlePSet(const Ifc4::IfcPropertySet *set) {
@@ -8,13 +9,12 @@ void handlePSet(const Ifc4::IfcPropertySet *set) {
 
     const auto props = set->HasProperties();
 
-    for (const auto prop: (*props)) {
+    for (const auto prop : (*props)) {
         const auto propName = prop->Name();
         const auto propIfcVal = findValue(prop);
         if (!propIfcVal) continue;
 
         if (propName == "AnzahlArbeitsplätze") {
-
         }
 
         const auto propVal = getPropValue(propIfcVal);
@@ -28,7 +28,7 @@ void handleQSet(const Ifc4::IfcQuantitySet *set) {
 
     const auto eq = set->as<Ifc4::IfcElementQuantity>();
     const auto quantities = eq->Quantities();
-    for (const auto quantity: (*quantities)) {
+    for (const auto quantity : (*quantities)) {
         qSet[name.value()][quantity->Name()] = getQuantityValue(quantity);
     }
 }
@@ -44,5 +44,6 @@ void handleSetDefSelect(const Ifc4::IfcPropertySetDefinitionSelect *select) {
         return;
     }
 
-    std::cerr << "this script doesn't handle " << select->data().type()->name() << std::endl;
+    std::cerr << "this script doesn't handle " << select->data().type()->name()
+              << std::endl;
 }

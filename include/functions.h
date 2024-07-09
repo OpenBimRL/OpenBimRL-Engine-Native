@@ -9,4 +9,4 @@ extern "C" {
 [[maybe_unused]] void getBoundingBox(void);
 }
 
-#endif //OPENBIMRL_NATIVE_FUNCTIONS_H
+#endif  // OPENBIMRL_NATIVE_FUNCTIONS_H

@@ -1,15 +1,17 @@
+#include <gtest/gtest.h>
+#include <ifcparse/Ifc4.h>
+
+#include <filesystem>
+
+#include "functions.h"
 #include "lib.h"
 #include "utils.h"
-#include "functions.h"
-
-#include <ifcparse/Ifc4.h>
-#include <filesystem>
-#include <gtest/gtest.h>
 
 TEST(IFC4, LoadFile) {
     OpenBimRL::Engine::Utils::setSilent(true);
 
-    const auto init = initIfc(std::filesystem::path(RESOURCES_DIR).append("correct.ifc").c_str());
+    const auto init = initIfc(
+        std::filesystem::path(RESOURCES_DIR).append("correct.ifc").c_str());
 
     ASSERT_TRUE(init);
 }
@@ -23,17 +25,16 @@ TEST(Functions, FilterByGUID) {
     // IfcOpeningElement#3bnVDGnRyHxfLHBF1T2vCN
     const auto guid = "3bnVDGnRyHxfLHBF1T2vCN";
     const auto getGUID = [=](uint32_t) { return guid; };
-    const auto setPointer = [=](uint32_t index, void* result) {
-        if (index != 0)
-            FAIL() << "filterByGUID returned nothing on output 0";
-        if (!result)
-            FAIL() << "filterByGUID returned null pointer!";
+    const auto setPointer = [=](uint32_t index, void *result) {
+        if (index != 0) FAIL() << "filterByGUID returned nothing on output 0";
+        if (!result) FAIL() << "filterByGUID returned null pointer!";
         try {
-            const auto ifcItem = ((IfcUtil::IfcBaseClass *)(result))->as<Ifc4::IfcObject>(true);
+            const auto ifcItem =
+                ((IfcUtil::IfcBaseClass *)(result))->as<Ifc4::IfcObject>(true);
             const auto itemGUID = ifcItem->GlobalId();
-            EXPECT_EQ(itemGUID.compare(guid), 0) << "GUIDs: [" + itemGUID + ", " + guid + "] do not match!";
-        }
-        catch (IfcParse::IfcException &e) {
+            EXPECT_EQ(itemGUID.compare(guid), 0)
+                << "GUIDs: [" + itemGUID + ", " + guid + "] do not match!";
+        } catch (IfcParse::IfcException &e) {
             FAIL() << e.what();
         }
     };
@@ -54,10 +55,13 @@ TEST(Functions, FilterByGUID) {
 TEST(Functions, FilterByElement) {
     const auto type = "IfcSpace";
     const auto getType = [=](uint32_t) { return type; };
-    const auto setPointer = [](uint32_t, void *) { FAIL() << "returned null pointer!"; };
+    const auto setPointer = [](uint32_t, void *) {
+        FAIL() << "returned null pointer!";
+    };
     void *buffer;
     std::size_t elements_buffer_size = 0;
-    const auto setOutputArray = [&buffer, &elements_buffer_size](uint32_t position, std::size_t size) {
+    const auto setOutputArray = [&buffer, &elements_buffer_size](
+                                    uint32_t position, std::size_t size) {
         buffer = calloc(size, 1);
         elements_buffer_size = size;
         return buffer;
@@ -72,18 +76,18 @@ TEST(Functions, FilterByElement) {
     OpenBimRL::Engine::Functions::setOutputDouble = nullptr;
     OpenBimRL::Engine::Functions::setOutputInt = nullptr;
     OpenBimRL::Engine::Functions::setOutputString = nullptr;
-    OpenBimRL::Engine::Functions::setOutputArray = std::function(setOutputArray);
+    OpenBimRL::Engine::Functions::setOutputArray =
+        std::function(setOutputArray);
 
     filterByElement();
-
 
     if (!buffer) {
         FAIL();
     }
 
-    const auto elementArray = (IfcUtil::IfcBaseClass **) buffer;
+    const auto elementArray = (IfcUtil::IfcBaseClass **)buffer;
 
-    const auto elements = elements_buffer_size / sizeof (void *);
+    const auto elements = elements_buffer_size / sizeof(void *);
 
     ASSERT_EQ(elements, 326);
 
@@ -92,9 +96,12 @@ TEST(Functions, FilterByElement) {
             const auto element = elementArray[i]->as<Ifc4::IfcSpace>(true);
             const auto className = element->data().type()->name();
             if (className != "IfcSpace")
-                FAIL() << "Element is not of type IfcSpace. Instead it is an: " << className;
+                FAIL() << "Element is not of type IfcSpace. Instead it is an: "
+                       << className;
         } catch (IfcParse::IfcException &e) {
-            FAIL() << "Element was not of type IfcSpace. While parsing this error occurred: " << e.what();
+            FAIL() << "Element was not of type IfcSpace. While parsing this "
+                      "error occurred: "
+                   << e.what();
         }
     }
 
@@ -102,37 +109,39 @@ TEST(Functions, FilterByElement) {
 }
 
 TEST(Functions, GetBoundingBox) {
+    IfcParse::IfcFile *file =
+        OpenBimRL::Engine::Utils::getCurrentFile();  // get active file
+    auto counter = 0;
 
-  IfcParse::IfcFile *file = OpenBimRL::Engine::Utils::getCurrentFile(); // get active file
-  auto counter = 0;
+    OpenBimRL::Engine::Functions::getInputPointer =
+        std::function([file, &counter](uint32_t) {
+            return (void *)(*(file->instances_by_type("IfcSpace")->begin() +
+                              counter));
+        });
+    OpenBimRL::Engine::Functions::getInputDouble = nullptr;
+    OpenBimRL::Engine::Functions::getInputInt = nullptr;
+    OpenBimRL::Engine::Functions::getInputString = nullptr;
 
-  OpenBimRL::Engine::Functions::getInputPointer = std::function([file, &counter](uint32_t){return (void *)(*(file->instances_by_type("IfcSpace")->begin() + counter));});
-  OpenBimRL::Engine::Functions::getInputDouble = nullptr;
-  OpenBimRL::Engine::Functions::getInputInt = nullptr;
-  OpenBimRL::Engine::Functions::getInputString = nullptr;
-
-  for (counter; counter < 200; counter++)
-    getBoundingBox();
+    for (counter; counter < 200; counter++) getBoundingBox();
 }
 
 TEST(Utils, Polygon) {
-  IfcParse::IfcFile *file = OpenBimRL::Engine::Utils::getCurrentFile();
-  const auto someSpace = (*(file->instances_by_type("IfcSpace")->begin()));
+    IfcParse::IfcFile *file = OpenBimRL::Engine::Utils::getCurrentFile();
+    const auto someSpace = (*(file->instances_by_type("IfcSpace")->begin()));
 
-  const auto size = request_geometry_polygon(someSpace);
+    const auto size = request_geometry_polygon(someSpace);
 }
 
 TEST(Serializer, Serialize) {
     const auto type = "IfcSpace";
-    IfcParse::IfcFile *file = OpenBimRL::Engine::Utils::getCurrentFile(); // get active file
+    IfcParse::IfcFile *file =
+        OpenBimRL::Engine::Utils::getCurrentFile();  // get active file
     boost::shared_ptr<aggregate_of_instance> ptr;
-    try
-    {
-        ptr = file->instances_by_type(type); // find ifc obj by guid
+    try {
+        ptr = file->instances_by_type(type);  // find ifc obj by guid
     }
-        // thank you IfcOpenShell for documenting that this error exists...
-    catch (const IfcParse::IfcException &)
-    {
+    // thank you IfcOpenShell for documenting that this error exists...
+    catch (const IfcParse::IfcException &) {
     }
 
     for (const auto item : (*ptr)) {

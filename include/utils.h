@@ -19,9 +19,8 @@ bool isIFC4();
 bool isIFC2x3();
 void setSilent(bool);
 IfcParse::IfcFile* getCurrentFile();
-TopoDS_Compound create_shape(IfcGeom::IteratorSettings&,
-             IfcUtil::IfcBaseClass*,
-             IfcUtil::IfcBaseClass* = nullptr);
+TopoDS_Compound create_shape(IfcGeom::IteratorSettings&, IfcUtil::IfcBaseClass*,
+                             IfcUtil::IfcBaseClass* = nullptr);
 
 std::optional<TopoDS_Compound> create_shape_default(IfcUtil::IfcBaseClass*);
 
