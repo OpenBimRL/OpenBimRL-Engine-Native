@@ -15,7 +15,7 @@ using namespace OpenBimRL::Engine::Types;
 [[maybe_unused]] bool initIfc(JNA::String);
 
 [[maybe_unused]] std::size_t request_geometry_polygon(JNA::Pointer);
-[[maybe_unused]] void copy_geometry_polygon(JNA::Pointer);
+[[maybe_unused]] [[maybe_unused]] void copy_geometry_polygon(JNA::Pointer);
 
 using namespace Functions;
 [[maybe_unused]] void init_function(get_input_pointer, get_input_double,

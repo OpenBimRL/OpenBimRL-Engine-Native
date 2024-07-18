@@ -10,8 +10,8 @@
 TEST(IFC4, LoadFile) {
     OpenBimRL::Engine::Utils::setSilent(true);
 
-    const auto init = initIfc(
-        std::filesystem::path(RESOURCES_DIR).append("correct.ifc").c_str());
+    const auto init =
+        initIfc(std::filesystem::path(RESOURCES_DIR).append("IC6.ifc").c_str());
 
     ASSERT_TRUE(init);
 }
@@ -111,25 +111,26 @@ TEST(Functions, FilterByElement) {
 TEST(Functions, GetBoundingBox) {
     IfcParse::IfcFile *file =
         OpenBimRL::Engine::Utils::getCurrentFile();  // get active file
-    auto counter = 0;
+    std::uint32_t counter = 0;
+    const auto sharedVec = file->instances_by_type("IfcSpace");
 
     OpenBimRL::Engine::Functions::getInputPointer =
-        std::function([file, &counter](uint32_t) {
-            return (void *)(*(file->instances_by_type("IfcSpace")->begin() +
-                              counter));
+        std::function([&counter, &sharedVec](uint32_t) {
+            return (void *)(*(sharedVec->begin() + counter));
         });
     OpenBimRL::Engine::Functions::getInputDouble = nullptr;
     OpenBimRL::Engine::Functions::getInputInt = nullptr;
     OpenBimRL::Engine::Functions::getInputString = nullptr;
 
-    for (counter; counter < 200; counter++) getBoundingBox();
+    for (counter; counter < sharedVec->size(); counter++) getBoundingBox();
 }
 
 TEST(Utils, Polygon) {
     IfcParse::IfcFile *file = OpenBimRL::Engine::Utils::getCurrentFile();
-    const auto someSpace = (*(file->instances_by_type("IfcSpace")->begin()));
+    const auto spaces = file->instances_by_type("IfcSpace");
 
-    const auto size = request_geometry_polygon(someSpace);
+    for (const auto space : *(spaces))
+        const auto size = request_geometry_polygon(space);
 }
 
 TEST(Serializer, Serialize) {

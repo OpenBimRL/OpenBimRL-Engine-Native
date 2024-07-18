@@ -19,7 +19,7 @@
     Bnd_Box bbox;
 
     BRepBndLib::AddOptimal(
-        element.value(),
+        element.value()->as_compound(),
         bbox);  // automatically expands the box to fit given geometry by adding
                 // points util every point is inside the box
     const auto corner_min = bbox.CornerMin(), corner_max = bbox.CornerMax();
