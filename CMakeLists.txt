@@ -6,20 +6,20 @@ include(FetchContent)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if(NOT CMAKE_BUILD_TYPE)
+if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
-endif()
+endif ()
 
 message("CMake is set to build for: ${CMAKE_BUILD_TYPE}")
 
 set(CMAKE_CXX_FLAGS "-Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-O2")
+set(CMAKE_CXX_FLAGS_RELEASE "-O0")
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-undefined" )
-set(BUILD_SHARED_LIBS ON)
+# set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-undefined" )
+set(BUILD_SHARED_LIBS OFF)
 
 # configure IfcOpenShell
 set(BUILD_GEOMSERVER OFF)
@@ -46,7 +46,7 @@ FetchContent_Declare(
         ifcopenshell
         GIT_REPOSITORY https://github.com/IfcOpenShell/IfcOpenShell.git
         GIT_TAG 60a70f5236528eaad63a1bb9109044d04a108679
-        SOURCE_SUBDIR  cmake
+        SOURCE_SUBDIR cmake
 )
 
 find_package(HDF5 REQUIRED)
@@ -54,6 +54,7 @@ find_package(HDF5 REQUIRED)
 FetchContent_MakeAvailable(ifcopenshell)
 
 add_library(OpenBIMRL_Native SHARED
+        functions/calculate_building_bounds.cpp
         functions/filter_by_element.cpp
         functions/function.cpp
         functions/filter_by_guid.cpp
@@ -73,6 +74,23 @@ set_property(TARGET OpenBIMRL_Native PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 target_link_libraries(
         OpenBIMRL_Native
+        PUBLIC TKernel
+        PUBLIC TKMath
+        PUBLIC TKBRep
+        PUBLIC TKGeomBase
+        PUBLIC TKGeomAlgo
+        PUBLIC TKG3d
+        PUBLIC TKG2d
+        PUBLIC TKShHealing
+        PUBLIC TKTopAlgo
+        PUBLIC TKMesh
+        PUBLIC TKPrim
+        PUBLIC TKBool
+        PUBLIC TKBO
+        PUBLIC TKFillet
+        PUBLIC TKXSBase
+        PUBLIC TKOffset
+        PUBLIC TKHLR
         PUBLIC nlohmann_json::nlohmann_json
         PUBLIC IfcParse
         PUBLIC IfcGeom
@@ -97,7 +115,7 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
 enable_testing()
 
-add_definitions( -DRESOURCES_DIR="${CMAKE_SOURCE_DIR}/test/resources" )
+add_definitions(-DRESOURCES_DIR="${CMAKE_SOURCE_DIR}/test/resources")
 
 add_executable(
         OpenBIMRL_Native_Test
