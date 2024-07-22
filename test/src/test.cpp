@@ -104,15 +104,31 @@ TEST(Functions, FilterByElement) {
 TEST(Functions, GetBoundingBox) {
 
   IfcParse::IfcFile *file = OpenBimRL::Engine::Utils::getCurrentFile(); // get active file
-  auto counter = 0;
+  std::uint32_t counter = 0;
 
   OpenBimRL::Engine::Functions::getInputPointer = std::function([file, &counter](uint32_t){return (void *)(*(file->instances_by_type("IfcSpace")->begin() + counter));});
   OpenBimRL::Engine::Functions::getInputDouble = nullptr;
   OpenBimRL::Engine::Functions::getInputInt = nullptr;
   OpenBimRL::Engine::Functions::getInputString = nullptr;
 
-  for (counter; counter < 200; counter++)
+  for (counter; counter < file->instances_by_type("IfcSpace")->size(); counter++)
     getBoundingBox();
+}
+
+TEST(Functions, CalculateBuildingBounds) {
+  void *buffer;
+  std::size_t elements_buffer_size = 0;
+  const auto setOutputArray = [&buffer, &elements_buffer_size](uint32_t position, std::size_t size) {
+    buffer = calloc(size, 1);
+    elements_buffer_size = size;
+    return buffer;
+  };
+
+  OpenBimRL::Engine::Functions::setOutputArray = std::function(setOutputArray);
+
+  calculatingBuildingBounds();
+
+  free(buffer);
 }
 
 TEST(Serializer, Serialize) {

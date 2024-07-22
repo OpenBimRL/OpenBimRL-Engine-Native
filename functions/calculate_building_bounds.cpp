@@ -10,11 +10,13 @@
   SerializerSettings settings;
   settings.set(IfcGeom::IteratorSettings::APPLY_DEFAULT_MATERIALS, true);
   settings.set(IfcGeom::IteratorSettings::USE_WORLD_COORDS, true);
-  settings.set(IfcGeom::IteratorSettings::USE_BREP_DATA, true);
+  // settings.set(IfcGeom::IteratorSettings::USE_BREP_DATA, true);
 
   IfcGeom::Iterator geom_iterator(settings,
                                   OpenBimRL::Engine::Utils::getCurrentFile(),
                                   std::thread::hardware_concurrency());
+
+  geom_iterator.initialize();
 
   geom_iterator.compute_bounds(true);
   const auto lower = geom_iterator.bounds_min();
