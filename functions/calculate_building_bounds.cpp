@@ -10,7 +10,11 @@
   SerializerSettings settings;
   settings.set(IfcGeom::IteratorSettings::APPLY_DEFAULT_MATERIALS, true);
   settings.set(IfcGeom::IteratorSettings::USE_WORLD_COORDS, true);
-  // settings.set(IfcGeom::IteratorSettings::USE_BREP_DATA, true);
+  settings.set(IfcGeom::IteratorSettings::NO_WIRE_INTERSECTION_CHECK, true);
+  settings.set(IfcGeom::IteratorSettings::DISABLE_OPENING_SUBTRACTIONS, true);
+  settings.set(IfcGeom::IteratorSettings::DISABLE_BOOLEAN_RESULT, true);
+
+  //settings.set(IfcGeom::IteratorSettings::USE_BREP_DATA, true);
 
   IfcGeom::Iterator geom_iterator(settings,
                                   OpenBimRL::Engine::Utils::getCurrentFile(),
