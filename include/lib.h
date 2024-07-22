@@ -3,7 +3,6 @@
 
 #include "types.h"
 
-
 extern "C" {
 using namespace OpenBimRL::Engine::Types;
 
@@ -15,17 +14,15 @@ using namespace OpenBimRL::Engine::Types;
 /// @return true if the library was successfully loaded
 [[maybe_unused]] bool initIfc(JNA::String);
 
-using namespace Functions;
-[[maybe_unused]] void init_function(get_input_pointer,
-                   get_input_double,
-                   get_input_integer,
-                   get_input_string,
-                   set_output_pointer,
-                   set_output_double,
-                   set_output_integer,
-                   set_output_string,
-                   set_output_array);
+[[maybe_unused]] std::size_t request_geometry_polygon(JNA::Pointer);
+[[maybe_unused]] [[maybe_unused]] void copy_geometry_polygon(JNA::Pointer);
 
+using namespace Functions;
+[[maybe_unused]] void init_function(get_input_pointer, get_input_double,
+                                    get_input_integer, get_input_string,
+                                    set_output_pointer, set_output_double,
+                                    set_output_integer, set_output_string,
+                                    set_output_array);
 }
 
-#endif //OPENBIMRL_NATIVE_LIB_H
+#endif  // OPENBIMRL_NATIVE_LIB_H

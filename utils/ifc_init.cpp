@@ -1,15 +1,14 @@
-#include "utils.h"
-#include "lib.h"
-
 #include <iostream>
+
+#include "lib.h"
+#include "utils.h"
 
 static IfcParse::IfcFile *currentFile;
 // static IfcGeom::Kernel *kernel;
 static bool silent = false;
 
 // hopefully this doesn't leak memory... ¯\_(ツ)_/¯
-static void setCurrentFile(IfcParse::IfcFile *newFile)
-{
+static void setCurrentFile(IfcParse::IfcFile *newFile) {
     // clang-tidy: if not necessary due to deleting null pointer has no effect
     delete currentFile;
     // delete kernel;
@@ -27,26 +26,20 @@ IfcParse::IfcFile *OpenBimRL::Engine::Utils::getCurrentFile() {
     return currentFile;
 }
 
-void OpenBimRL::Engine::Utils::setSilent(bool s) {
-    silent = s;
-}
+void OpenBimRL::Engine::Utils::setSilent(bool s) { silent = s; }
 
 [[maybe_unused]]
 bool initIfc(JNA::String fileName) {
+    if (!silent) Logger::SetOutput(&std::cout, &std::cout);
 
-    if (!silent)
-        Logger::SetOutput(&std::cout, &std::cout);
-
-    if (!fileName)
-    {
+    if (!fileName) {
         std::cerr << "no file given" << std::endl;
         return false;
     }
 
     // Parse the IFC file provided in fileName
     auto file = new IfcParse::IfcFile(fileName);
-    if (!file->good())
-    {
+    if (!file->good()) {
         std::cerr << "Unable to parse .ifc file" << std::endl;
         return false;
     }
@@ -60,7 +53,6 @@ bool OpenBimRL::Engine::Utils::isIFC2x3() {
     return getCurrentFile()->schema()->name() == "IFC2x3";
 }
 
-bool OpenBimRL::Engine::Utils::isIFC4()
-{
+bool OpenBimRL::Engine::Utils::isIFC4() {
     return getCurrentFile()->schema()->name() == "IFC4";
 }

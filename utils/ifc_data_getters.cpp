@@ -61,7 +61,8 @@ std::string getPropValue(const Ifc4::IfcValue *prop) {
         ss << item->operator double();
         return ss.str();
     }
-    if (const auto item = prop->as<Ifc4::IfcThermodynamicTemperatureMeasure>()) {
+    if (const auto item =
+            prop->as<Ifc4::IfcThermodynamicTemperatureMeasure>()) {
         ss << item->operator double();
         return ss.str();
     }
@@ -144,7 +145,6 @@ std::string getPropValue(const Ifc4::IfcValue *prop) {
     if (const auto item = prop->as<Ifc4::IfcComplexNumber>()) {
         throw std::runtime_error("not implemented");
     }
-
 
     return "";
 }

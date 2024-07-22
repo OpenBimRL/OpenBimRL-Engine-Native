@@ -10,4 +10,4 @@ extern "C" {
 [[maybe_unused]] void calculatingBuildingBounds(void);
 }
 
-#endif //OPENBIMRL_NATIVE_FUNCTIONS_H
+#endif  // OPENBIMRL_NATIVE_FUNCTIONS_H

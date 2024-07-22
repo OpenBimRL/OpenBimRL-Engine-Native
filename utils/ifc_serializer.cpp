@@ -1,22 +1,22 @@
+#include <nlohmann/json.hpp>
+
 #include "lib.h"
 #include "utils.h"
 
-#include <nlohmann/json.hpp>
-
 static std::string buffer = std::string();
 
-[[maybe_unused]] std::size_t request_ifc_object_json_size(JNA::Pointer ifcPointer) {
+[[maybe_unused]] std::size_t request_ifc_object_json_size(
+    JNA::Pointer ifcPointer) {
     buffer.clear();
     const auto ifcObject = (IFC::IfcObjectPointer)ifcPointer;
     auto data = OpenBimRL::Engine::Utils::getData(ifcObject);
     OpenBimRL::Engine::Utils::populateProperties(data, ifcObject);
 
-    const auto json = nlohmann::json{
-            {"guid",       data.GUID},
-            {"ifc_class",  data.ifcClass},
-            {"properties", data.propertySets},
-            {"quantities", data.quantitySets}
-    }.dump(4);
+    const auto json = nlohmann::json{{"guid", data.GUID},
+                                     {"ifc_class", data.ifcClass},
+                                     {"properties", data.propertySets},
+                                     {"quantities", data.quantitySets}}
+                          .dump(4);
 
     buffer.append(json);
 
