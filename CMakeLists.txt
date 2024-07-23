@@ -14,7 +14,7 @@ message("CMake is set to build for: ${CMAKE_BUILD_TYPE}")
 
 set(CMAKE_CXX_FLAGS "-Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-O0")
+# set(CMAKE_CXX_FLAGS_RELEASE "-O0")
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
@@ -66,8 +66,8 @@ add_library(OpenBIMRL_Native SHARED
         utils/ifc_data_getters.cpp
         utils/ifc_data_handlers.cpp
         utils/ifc_data_utils.cpp
-        utils/ifc_wrap.cpp
         utils/ifc_geometry_polygon.cpp
+        utils/guid.cpp
 )
 
 set_property(TARGET OpenBIMRL_Native PROPERTY POSITION_INDEPENDENT_CODE ON)

@@ -1,8 +1,10 @@
 #ifndef OPENBIMRL_NATIVE_UTILS_H
 #define OPENBIMRL_NATIVE_UTILS_H
+// clang-format off
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <thread>
 
 #include "types.h"
 
@@ -11,18 +13,18 @@
 
 #include <ifcgeom_schema_agnostic/IfcGeomElement.h>
 #include <ifcgeom_schema_agnostic/Kernel.h>
+#include <ifcgeom_schema_agnostic/IfcGeomIterator.h>
 
 #include <TopoDS_Compound.hxx>
+
+// clang-format on
 
 namespace OpenBimRL::Engine::Utils {
 bool isIFC4();
 bool isIFC2x3();
+std::string getGUID(Types::IFC::IfcObjectPointer);
 void setSilent(bool);
 IfcParse::IfcFile* getCurrentFile();
-std::optional<boost::shared_ptr<IfcGeom::Representation::BRep>> create_shape(IfcGeom::IteratorSettings&, IfcUtil::IfcBaseClass*,
-                             IfcUtil::IfcBaseClass* = nullptr);
-
-std::optional<boost::shared_ptr<IfcGeom::Representation::BRep>> create_shape_default(IfcUtil::IfcBaseClass*);
 
 using namespace OpenBimRL::Engine::Types;
 IFC::IfcData getData(IFC::IfcObjectPointer);

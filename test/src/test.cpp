@@ -9,7 +9,7 @@
 TEST(IFC4, LoadFile) {
     OpenBimRL::Engine::Utils::setSilent(true);
 
-    const auto init = initIfc(std::filesystem::path(RESOURCES_DIR).append("correct.ifc").c_str());
+    const auto init = initIfc(std::filesystem::path(RESOURCES_DIR).append("IC6.ifc").c_str());
 
     ASSERT_TRUE(init);
 }
@@ -129,6 +129,29 @@ TEST(Functions, CalculateBuildingBounds) {
   calculatingBuildingBounds();
 
   free(buffer);
+}
+
+TEST(Utils, GeometryPolygon) {
+    const auto type = "IfcWall";
+    IfcParse::IfcFile *file = OpenBimRL::Engine::Utils::getCurrentFile(); // get active file
+    boost::shared_ptr<aggregate_of_instance> ptr;
+    try
+    {
+        ptr = file->instances_by_type(type); // find ifc obj by guid
+    }
+    // thank you IfcOpenShell for documenting that this error exists...
+    catch (const IfcParse::IfcException &)
+    {
+    }
+
+    for (const auto item : (*ptr)) {
+        const auto size = request_geometry_polygon(item);
+        if (!size) continue;
+        auto str = (char *)std::calloc(size + 1, sizeof(double));
+        copy_geometry_polygon(str);
+        std::cout << std::string(str) << std::endl;
+        std::free(str);
+    }
 }
 
 TEST(Serializer, Serialize) {
