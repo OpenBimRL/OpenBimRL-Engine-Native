@@ -15,3 +15,6 @@ cmake-build-release
 # IDE stuff
 .idea
 .vscode
+
+!/test/resources/correct.ifc
+/test/resources/*

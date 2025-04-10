@@ -18,7 +18,7 @@
 
     const auto instances = file->instances_by_type(
         ifcClass);  // get instances by ifc class excluding subtypes
-    const auto size = instances->size();
+    const auto size = instances ? instances->size() : 0;
     if (!size) {
         Functions::setOutputPointer(0, nullptr);
         return;

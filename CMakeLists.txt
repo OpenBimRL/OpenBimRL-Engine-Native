@@ -33,8 +33,8 @@ set(BUILD_IFCGEOM ON)
 
 set(SCHEMA_VERSIONS "2x3" "4")
 
-set(GMP_LIBRARY_DIR "/usr/lib/x86_64-linux-gnu")
-set(MPFR_LIBRARY_DIR ${GMP_LIBRARY_DIR})
+# set(GMP_LIBRARY_DIR "/usr/lib/x86_64-linux-gnu")
+# set(MPFR_LIBRARY_DIR ${GMP_LIBRARY_DIR})
 
 FetchContent_Declare(
         json
@@ -120,6 +120,7 @@ add_definitions(-DRESOURCES_DIR="${CMAKE_SOURCE_DIR}/test/resources")
 add_executable(
         OpenBIMRL_Native_Test
         test/src/test.cpp
+        test/src/ifc_elements.h
 )
 
 target_link_libraries(
