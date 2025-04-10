@@ -33,8 +33,10 @@ set(BUILD_IFCGEOM ON)
 
 set(SCHEMA_VERSIONS "2x3" "4")
 
-find_library(GMP_LIBRARY_DIR NAMES gmp REQUIRED)
-message("found GMP at: ${GMP_LIBRARY_DIR}")
+find_library(GMP_LIBRARY_FILE NAMES gmp mpir REQUIRED)
+message("found GMP at: ${GMP_LIBRARY_FILE}")
+cmake_path(GET GMP_LIBRARY_FILE PARENT_PATH GMP_LIBRARY_DIR)
+message("transformed GMP dir to: ${GMP_LIBRARY_DIR}")
 
 # set(GMP_LIBRARY_DIR "/usr/lib/x86_64-linux-gnu")
 # set(MPFR_LIBRARY_DIR ${GMP_LIBRARY_DIR})
