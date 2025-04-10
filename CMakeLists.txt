@@ -38,8 +38,7 @@ message("found GMP at: ${GMP_LIBRARY_FILE}")
 cmake_path(GET GMP_LIBRARY_FILE PARENT_PATH GMP_LIBRARY_DIR)
 message("transformed GMP dir to: ${GMP_LIBRARY_DIR}")
 
-# set(GMP_LIBRARY_DIR "/usr/lib/x86_64-linux-gnu")
-# set(MPFR_LIBRARY_DIR ${GMP_LIBRARY_DIR})
+set(MPFR_LIBRARY_DIR ${GMP_LIBRARY_DIR})
 
 FetchContent_Declare(
         json
