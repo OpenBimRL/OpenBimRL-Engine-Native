@@ -23,7 +23,7 @@ jobs:
           env: true
 
       - name: Install dependencies
-        run: sudo apt update && sudo apt install -y xfonts-scalable libocct-data-exchange-dev libocct-draw-dev libocct-foundation-dev libocct-modeling-algorithms-dev libocct-modeling-data-dev libocct-ocaf-dev libocct-visualization-dev libboost-all-dev libhdf5-dev libgmp-dev libmpfr-dev
+        run: sudo apt update && sudo apt install -y xfonts-scalable libocct-data-exchange-dev libocct-draw-dev libocct-foundation-dev libocct-modeling-algorithms-dev libocct-modeling-data-dev libocct-ocaf-dev libocct-visualization-dev libboost-all-dev libhdf5-dev libcgal-dev libgmp-dev libmpfr-dev
 
       - name: Configure CMake
         # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
