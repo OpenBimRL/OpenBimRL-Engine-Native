@@ -16,6 +16,32 @@ set(CMAKE_CXX_FLAGS "-Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 # set(CMAKE_CXX_FLAGS_RELEASE "-O0")
 
+# Find OpenMP
+find_package(OpenMP REQUIRED)
+if(OpenMP_CXX_FOUND)
+    message(STATUS "OpenMP found: ${OpenMP_CXX_VERSION}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+endif()
+
+option(OPENBIMRL_ENABLE_ROCM_OFFLOAD "Enable ROCm OpenMP GPU offloading" OFF)
+set(OPENBIMRL_ROCM_OFFLOAD_ARCH "" CACHE STRING "ROCm offload architecture, e.g. gfx1100")
+
+if(OPENBIMRL_ENABLE_ROCM_OFFLOAD)
+    if(NOT OPENBIMRL_ROCM_OFFLOAD_ARCH)
+        message(FATAL_ERROR "OPENBIMRL_ENABLE_ROCM_OFFLOAD=ON requires OPENBIMRL_ROCM_OFFLOAD_ARCH")
+    endif()
+    if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        message(FATAL_ERROR
+            "ROCm OpenMP offloading requires a Clang compiler, but got '${CMAKE_CXX_COMPILER_ID}' at '${CMAKE_CXX_COMPILER}'. "
+            "Configure CMake with ROCm clang, e.g. -DCMAKE_CXX_COMPILER=/opt/rocm/llvm/bin/clang++"
+        )
+    endif()
+    message(STATUS "ROCm OpenMP offloading enabled for arch: ${OPENBIMRL_ROCM_OFFLOAD_ARCH}")
+    set(CMAKE_CXX_FLAGS
+        "${CMAKE_CXX_FLAGS} -fopenmp-targets=amdgcn-amd-amdhsa --offload-arch=${OPENBIMRL_ROCM_OFFLOAD_ARCH}"
+    )
+endif()
+
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
 # set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-undefined" )
