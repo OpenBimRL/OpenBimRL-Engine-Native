@@ -97,6 +97,7 @@ add_library(OpenBIMRL_Native SHARED
         utils/ifc_data_handlers.cpp
         utils/ifc_data_utils.cpp
         utils/ifc_geometry_polygon.cpp
+        utils/pathfinding_omp.cpp
         utils/guid.cpp
 )
 

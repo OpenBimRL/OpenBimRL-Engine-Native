@@ -16,6 +16,15 @@ using namespace OpenBimRL::Engine::Types;
 
 [[maybe_unused]] std::size_t request_geometry_polygon(JNA::Pointer);
 [[maybe_unused]] [[maybe_unused]] void copy_geometry_polygon(JNA::Pointer);
+[[maybe_unused]] void calculate_path_edge_costs(const double* points_xy,
+                                                uint32_t point_count,
+                                                const uint32_t* edge_point_indices,
+                                                uint32_t edge_count,
+                                                const JNA::Pointer* passage_pointers,
+                                                uint32_t passage_count,
+                                                const JNA::Pointer* obstacle_pointers,
+                                                uint32_t obstacle_count,
+                                                double* output_costs);
 
 using namespace Functions;
 [[maybe_unused]] void init_function(get_input_pointer, get_input_double,
