@@ -68,6 +68,19 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(json)
 
+# Ubuntu 22.04 ships OpenCASCADEConfig.cmake in occt-misc under /usr/lib/cmake/opencascade;
+# Debian/bookworm uses /usr/lib/x86_64-linux-gnu/cmake/opencascade.
+if(NOT OpenCASCADE_DIR)
+    foreach(_occ_cmake_dir
+            "/usr/lib/x86_64-linux-gnu/cmake/opencascade"
+            "/usr/lib/cmake/opencascade")
+        if(EXISTS "${_occ_cmake_dir}/OpenCASCADEConfig.cmake")
+            set(OpenCASCADE_DIR "${_occ_cmake_dir}" CACHE PATH "OpenCASCADE CMake package directory")
+            break()
+        endif()
+    endforeach()
+endif()
+
 find_package(OpenCASCADE REQUIRED)
 find_package(Eigen3 REQUIRED)
 
