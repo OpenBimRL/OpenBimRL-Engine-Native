@@ -8,6 +8,7 @@
 #include "ifc_elements.h"
 #include "lib.h"
 #include "utils.h"
+#include "element_frame.h"
 
 namespace {
 
@@ -211,6 +212,25 @@ TEST(Utils, GeometryPolygon) {
         std::cout << std::string(str) << std::endl;
         std::free(str);
     }
+}
+
+TEST(IFC4X3, ElementFrameFromPlacement) {
+    ASSERT_TRUE(loadTestIfc("rail_test.ifc"));
+    IfcParse::IfcFile* file = OpenBimRL::Engine::Utils::getCurrentFile();
+    ASSERT_NE(file, nullptr);
+
+    const auto rails = file->instances_by_type("IfcRail");
+    ASSERT_TRUE(rails);
+    ASSERT_GE(rails->size(), 1);
+
+    OpenBimRL::Engine::Utils::ElementFrame frame{};
+    ASSERT_TRUE(OpenBimRL::Engine::Utils::getElementFrame((*rails)[0], frame));
+    EXPECT_EQ(frame.source, OpenBimRL::Engine::Utils::FrameSource::PLACEMENT);
+    EXPECT_NEAR(frame.point[0], 0.0, 1e-6);
+    EXPECT_NEAR(frame.point[1], 0.0, 1e-6);
+    EXPECT_NEAR(frame.point[2], 0.0, 1e-6);
+    EXPECT_NEAR(frame.axisX[0], 1.0, 1e-6);
+    EXPECT_NEAR(frame.axisZ[2], 1.0, 1e-6);
 }
 
 TEST(Serializer, Serialize) {

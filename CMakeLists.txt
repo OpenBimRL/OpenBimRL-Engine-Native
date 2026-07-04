@@ -208,6 +208,7 @@ add_library(OpenBIMRL_Native SHARED
         functions/function.cpp
         functions/filter_by_guid.cpp
         functions/get_bounding_box.cpp
+        functions/get_element_frame.cpp
         utils/ifc_init.cpp
         utils/ifc_serializer.cpp
         utils/ifc_data.cpp
@@ -219,6 +220,7 @@ add_library(OpenBIMRL_Native SHARED
         utils/pathfinding_omp.cpp
         utils/guid.cpp
         utils/ifc_geom_utils.cpp
+        utils/element_frame.cpp
 )
 
 set_property(TARGET OpenBIMRL_Native PROPERTY POSITION_INDEPENDENT_CODE ON)
