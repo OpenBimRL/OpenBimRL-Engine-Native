@@ -1,6 +1,8 @@
 #include <ifcparse/Ifc2x3.h>
 #include <ifcparse/Ifc4.h>
+#include <ifcparse/Ifc4x3_add2.h>
 
+#include "./ifc_data_schema.h"
 #include "./ifc_data_utils.h"
 #include "utils.h"
 
@@ -9,50 +11,21 @@ OpenBimRL::Engine::Types::IFC::qSet qSet;
 
 namespace OpenBimRL::Engine::Utils {
 IFC::IfcData getData(IFC::IfcObjectPointer ifcPointer) {
-    if (isIFC2x3()) {
-        const auto ifcItem = ifcPointer->as<Ifc2x3::IfcObject>();
-        return {.ifcClass = ifcItem->data().type()->name(),
-                .GUID = ifcItem->GlobalId()};
-    }
-    if (isIFC4()) {
-        const auto ifcItem = ifcPointer->as<Ifc4::IfcObject>();
-        return {.ifcClass = ifcItem->data().type()->name(),
-                .GUID = ifcItem->GlobalId()};
-    }
-
-    throw std::runtime_error("not defined for other than IFC 2x3 or 4");
+    const auto entity = ifcPointer->as<IfcUtil::IfcBaseEntity>(true);
+    return {.ifcClass = entity->declaration().name(),
+            .GUID = entity->get_value<std::string>("GlobalId")};
 }
 
-void populateProperties(IFC::IfcData &data, IFC::IfcObjectPointer ifcObject) {
+void populateProperties(IFC::IfcData& data, IFC::IfcObjectPointer ifcObject) {
     pSet.clear();
     qSet.clear();
 
     if (isIFC4()) {
-        const auto product = ifcObject->as<Ifc4::IfcObject>();
-        const auto definitions = product->IsDefinedBy();
-        for (const auto definition : (*definitions)) {
-            if (const auto byProps =
-                    definition->as<Ifc4::IfcRelDefinesByProperties>()) {
-                const auto propDefs = byProps->RelatingPropertyDefinition();
-
-                handleSetDefSelect(propDefs);
-                continue;
-            }
-            if (const auto byType =
-                    definition->as<Ifc4::IfcRelDefinesByType>()) {
-                const auto relatingType = byType->RelatingType();
-                const auto propertySetsOptional =
-                    relatingType->HasPropertySets();
-                if (!propertySetsOptional.has_value()) continue;
-
-                for (const auto propertySet : (*propertySetsOptional.value())) {
-                    handleSetDefSelect(propertySet);
-                }
-                continue;
-            }
-        }
+        populatePropertiesImpl<Ifc4>(ifcObject);
+    } else if (isIFC4X3()) {
+        populatePropertiesImpl<Ifc4x3_add2>(ifcObject);
     } else if (isIFC2x3()) {
-        // const auto product = ifcObject->as<Ifc2x3::IfcObject>();
+        // IFC2x3 property extraction not implemented yet.
     }
 
     data.propertySets = pSet;

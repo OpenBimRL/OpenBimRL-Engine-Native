@@ -11,6 +11,7 @@
 
 #include "lib.h"
 #include "utils.h"
+#include "ifc_geom_utils.h"
 
 namespace {
 using namespace OpenBimRL::Engine;
@@ -66,32 +67,24 @@ std::vector<Segment2D> extract_segments_from_pointer(JNA::Pointer ifc_pointer) {
     const auto guid =
         Utils::getGUID(static_cast<Types::IFC::IfcObjectPointer>(ifc_pointer));
 
-    SerializerSettings settings;
-    settings.set(IfcGeom::IteratorSettings::APPLY_DEFAULT_MATERIALS, true);
-    settings.set(IfcGeom::IteratorSettings::USE_WORLD_COORDS, true);
-    settings.set(IfcGeom::IteratorSettings::NO_WIRE_INTERSECTION_CHECK, true);
-    settings.set(IfcGeom::IteratorSettings::DISABLE_OPENING_SUBTRACTIONS, true);
-    settings.set(IfcGeom::IteratorSettings::DISABLE_BOOLEAN_RESULT, true);
-
     std::vector<IfcGeom::filter_t> filters;
     filters.emplace_back(std::function(([guid](IfcUtil::IfcBaseEntity* entity) {
         return guid == Utils::getGUID(entity);
     })));
 
-    IfcGeom::Iterator geom_iterator(settings, Utils::getCurrentFile(), filters);
-    if (!geom_iterator.initialize()) return segments;
+    auto geom_iterator = Utils::createGeometryIterator(Utils::getCurrentFile(), filters);
+    if (!geom_iterator->initialize()) return segments;
 
     IfcGeom::Element* geom_object = nullptr;
     do {
-        geom_object = geom_iterator.get();
+        geom_object = geom_iterator->get();
         if (geom_object) break;
-    } while (geom_iterator.next());
+    } while (geom_iterator->next());
     if (!geom_object) return segments;
 
     const auto* element =
         static_cast<const IfcGeom::TriangulationElement*>(geom_object);
     const IfcGeom::Representation::Triangulation& mesh = element->geometry();
-    const gp_XYZ& pos = element->transformation().data().TranslationPart();
 
     const auto& vertices_raw = mesh.verts();
     const auto vertices_count = vertices_raw.size() / 3;
@@ -99,8 +92,7 @@ std::vector<Segment2D> extract_segments_from_pointer(JNA::Pointer ifc_pointer) {
     vertices_xy.reserve(vertices_count);
     for (std::size_t i = 0; i < vertices_count; i++) {
         const auto idx = i * 3;
-        vertices_xy.push_back({vertices_raw[idx] + pos.X(),
-                               vertices_raw[idx + 1] + pos.Y()});
+        vertices_xy.push_back({vertices_raw[idx], vertices_raw[idx + 1]});
     }
 
     const auto& faces_raw = mesh.faces();

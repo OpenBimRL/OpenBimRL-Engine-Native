@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <ifcparse/Ifc4.h>
+#include <ifcparse/Ifc4x3_add2.h>
 
 #include <filesystem>
 
@@ -8,21 +9,59 @@
 #include "lib.h"
 #include "utils.h"
 
-TEST(IFC4, LoadFile) {
+namespace {
+
+bool loadTestIfc(const std::string& fileName) {
     OpenBimRL::Engine::Utils::setSilent(true);
+    return initIfc(
+        std::filesystem::path(RESOURCES_DIR).append(fileName).c_str());
+}
 
-    const auto init =
-        initIfc(std::filesystem::path(RESOURCES_DIR).append("correct.ifc").c_str());
+}  // namespace
 
-    ASSERT_TRUE(init);
+TEST(IFC4, LoadFile) {
+    ASSERT_TRUE(loadTestIfc("correct.ifc"));
 }
 
 TEST(IFC4, DetermineIFCVersion) {
+    ASSERT_TRUE(loadTestIfc("correct.ifc"));
     ASSERT_TRUE(OpenBimRL::Engine::Utils::isIFC4());
+    ASSERT_FALSE(OpenBimRL::Engine::Utils::isIFC2x3());
+    ASSERT_FALSE(OpenBimRL::Engine::Utils::isIFC4X3());
+}
+
+TEST(IFC4X3, LoadFile) {
+    ASSERT_TRUE(loadTestIfc("rail_test.ifc"));
+}
+
+TEST(IFC4X3, DetermineIFCVersion) {
+    ASSERT_TRUE(loadTestIfc("rail_test.ifc"));
+    ASSERT_TRUE(OpenBimRL::Engine::Utils::isIFC4X3());
+    ASSERT_FALSE(OpenBimRL::Engine::Utils::isIFC4());
     ASSERT_FALSE(OpenBimRL::Engine::Utils::isIFC2x3());
 }
 
+TEST(IFC4X3, FilterIfcRail) {
+    ASSERT_TRUE(loadTestIfc("rail_test.ifc"));
+    IfcParse::IfcFile* file = OpenBimRL::Engine::Utils::getCurrentFile();
+    ASSERT_NE(file, nullptr);
+
+    const auto rails = file->instances_by_type("IfcRail");
+    ASSERT_TRUE(rails);
+    ASSERT_EQ(rails->size(), 2);
+
+    for (const auto rail : (*rails)) {
+        const auto guid = OpenBimRL::Engine::Utils::getGUID(rail);
+        EXPECT_FALSE(guid.empty());
+        const auto data = OpenBimRL::Engine::Utils::getData(rail);
+        EXPECT_EQ(data.ifcClass, "IfcRail");
+        EXPECT_EQ(data.GUID, guid);
+    }
+}
+
 TEST(Functions, FilterByGUID) {
+    ASSERT_TRUE(loadTestIfc("correct.ifc"));
+
     // IfcOpeningElement#3bnVDGnRyHxfLHBF1T2vCN
     const auto guid = "3bnVDGnRyHxfLHBF1T2vCN";
     const auto getGUID = [=](uint32_t) { return guid; };
@@ -54,6 +93,8 @@ TEST(Functions, FilterByGUID) {
 }
 
 TEST(Functions, FilterByElement) {
+    ASSERT_TRUE(loadTestIfc("correct.ifc"));
+
     for (std::string_view ifc4ElementClass : ifc4ElementClasses) {
         const auto getType = [=](uint32_t) { return ifc4ElementClass.data(); };
         const auto setPointer = [&ifc4ElementClass](uint32_t, void *) {
@@ -95,7 +136,7 @@ TEST(Functions, FilterByElement) {
             try {
                 const auto element =
                     elementArray[i]->as<Ifc4::IfcElement>(true);
-                const auto className = element->data().type()->name();
+                const auto className = element->declaration().name();
                 if (className != ifc4ElementClass)
                     std::cout << "Element is not of type " << ifc4ElementClass
                            << ". Instead it is an: " << className;
@@ -108,6 +149,8 @@ TEST(Functions, FilterByElement) {
 }
 
 TEST(Functions, GetBoundingBox) {
+    ASSERT_TRUE(loadTestIfc("correct.ifc"));
+
     IfcParse::IfcFile *file =
         OpenBimRL::Engine::Utils::getCurrentFile();  // get active file
     std::uint32_t counter = 0;
@@ -127,6 +170,8 @@ TEST(Functions, GetBoundingBox) {
 }
 
 TEST(Functions, CalculateBuildingBounds) {
+    ASSERT_TRUE(loadTestIfc("correct.ifc"));
+
     void *buffer;
     std::size_t elements_buffer_size = 0;
     const auto setOutputArray = [&buffer, &elements_buffer_size](
@@ -145,6 +190,8 @@ TEST(Functions, CalculateBuildingBounds) {
 }
 
 TEST(Utils, GeometryPolygon) {
+    ASSERT_TRUE(loadTestIfc("correct.ifc"));
+
     const auto type = "IfcWall";
     IfcParse::IfcFile *file =
         OpenBimRL::Engine::Utils::getCurrentFile();  // get active file
@@ -167,6 +214,8 @@ TEST(Utils, GeometryPolygon) {
 }
 
 TEST(Serializer, Serialize) {
+    ASSERT_TRUE(loadTestIfc("correct.ifc"));
+
     const auto type = "IfcSpace";
     IfcParse::IfcFile *file =
         OpenBimRL::Engine::Utils::getCurrentFile();  // get active file

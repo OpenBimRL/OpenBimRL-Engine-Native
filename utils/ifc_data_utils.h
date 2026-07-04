@@ -3,6 +3,7 @@
 
 #include <ifcparse/Ifc2x3.h>
 #include <ifcparse/Ifc4.h>
+#include <ifcparse/Ifc4x3_add2.h>
 
 #include "types.h"
 
