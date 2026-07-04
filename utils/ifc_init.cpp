@@ -30,7 +30,7 @@ void OpenBimRL::Engine::Utils::setSilent(bool s) { silent = s; }
 
 [[maybe_unused]]
 bool initIfc(JNA::String fileName) {
-    if (!silent) Logger::SetOutput(&std::cout, &std::cout);
+    if (!silent) Logger::Root().SetOutput(&std::cout, &std::cout);
 
     if (!fileName) {
         std::cerr << "no file given" << std::endl;
@@ -55,4 +55,9 @@ bool OpenBimRL::Engine::Utils::isIFC2x3() {
 
 bool OpenBimRL::Engine::Utils::isIFC4() {
     return getCurrentFile()->schema()->name() == "IFC4";
+}
+
+bool OpenBimRL::Engine::Utils::isIFC4X3() {
+    const auto schemaName = getCurrentFile()->schema()->name();
+    return schemaName.rfind("IFC4X3", 0) == 0;
 }

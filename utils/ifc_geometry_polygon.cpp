@@ -2,6 +2,7 @@
 
 #include "lib.h"
 #include "utils.h"
+#include "ifc_geom_utils.h"
 
 #define NORMAL_TOLERANCE 0.01
 static std::vector<double> coords_buffer;
@@ -14,38 +15,28 @@ std::size_t request_geometry_polygon(JNA::Pointer ifcPointer) {
     const auto guid =
         Utils::getGUID(static_cast<Types::IFC::IfcObjectPointer>(ifcPointer));
 
-    SerializerSettings settings;
-    settings.set(IfcGeom::IteratorSettings::APPLY_DEFAULT_MATERIALS, true);
-    settings.set(IfcGeom::IteratorSettings::USE_WORLD_COORDS, true);
-    settings.set(IfcGeom::IteratorSettings::NO_WIRE_INTERSECTION_CHECK, true);
-    settings.set(IfcGeom::IteratorSettings::DISABLE_OPENING_SUBTRACTIONS, true);
-    settings.set(IfcGeom::IteratorSettings::DISABLE_BOOLEAN_RESULT, true);
-
     std::vector<IfcGeom::filter_t> filters;
 
     filters.emplace_back(std::function(([guid](IfcUtil::IfcBaseEntity* entity) {
         return guid == Utils::getGUID(entity);
     })));
 
-    IfcGeom::Iterator geom_iterator(
-        settings, OpenBimRL::Engine::Utils::getCurrentFile(), filters);
+    auto geom_iterator =
+        Utils::createGeometryIterator(Utils::getCurrentFile(), filters);
 
-    if (!geom_iterator.initialize()) return 0;
+    if (!geom_iterator->initialize()) return 0;
 
-    IfcGeom::Element* geom_object;
+    IfcGeom::Element* geom_object = nullptr;
 
     do {
-        geom_object = geom_iterator.get();
+        geom_object = geom_iterator->get();
         if (geom_object) break;
-    } while (geom_iterator.next());
+    } while (geom_iterator->next());
 
     if (!geom_object) return 0;
     const auto* o =
         static_cast<const IfcGeom::TriangulationElement*>(geom_object);
     const IfcGeom::Representation::Triangulation& mesh = o->geometry();
-    const gp_XYZ& pos = o->transformation().data().TranslationPart();
-
-    const gp_Dir axis(0., 0., 1.);
 
     const auto& verticesRaw = mesh.verts();
     const auto verticesCount = verticesRaw.size() / 3;
@@ -54,9 +45,8 @@ std::size_t request_geometry_polygon(JNA::Pointer ifcPointer) {
     vertices.reserve(verticesCount);
     for (std::size_t i = 0; i < verticesCount; i++) {
         const auto actualIndex = i * 3;
-        vertices.emplace_back(verticesRaw[actualIndex] + pos.X(),
-                              verticesRaw[actualIndex + 1] + pos.Y(),
-                              verticesRaw[actualIndex + 2] + pos.Z());
+        vertices.emplace_back(verticesRaw[actualIndex], verticesRaw[actualIndex + 1],
+                              verticesRaw[actualIndex + 2]);
     }
 
     const auto& facesRaw = mesh.faces();
