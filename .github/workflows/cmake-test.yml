@@ -49,6 +49,8 @@ jobs:
             libxml2-dev \
             ninja-build \
             occt-misc \
+            tcl-dev \
+            tk-dev \
             xfonts-scalable
 
       - name: Configure CMake
