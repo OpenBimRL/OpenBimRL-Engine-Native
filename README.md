@@ -1,6 +1,6 @@
 # OpenBimRL Engine Native
 
-C++ shared library (`OpenBIMRL_Native`) wrapping **IfcOpenShell** and **Open CASCADE** for IFC geometry. Callable entry points are exported through the **C ABI** (`extern "C"` in `include/functions.h`): stable symbol names and a plain calling convention so foreign runtimes (e.g. JNA on the JVM) can `dlopen` the library and invoke functions without C++ name mangling.
+C++ shared library (`OpenBIMRL_Native`) wrapping **IfcOpenShell** and **Open CASCADE** for IFC geometry. Callable entry points are exported through the **C ABI** (`include/openbimrl_c_api.h`): stable symbol names and a plain calling convention so foreign runtimes (e.g. JNA on the JVM) can `dlopen` the library and invoke functions without C++ name mangling.
 
 ## Responsibilities
 
@@ -14,11 +14,25 @@ C++ shared library (`OpenBIMRL_Native`) wrapping **IfcOpenShell** and **Open CAS
 
 ```
 .
-├── CMakeLists.txt          # CMake project
-├── include/                # Public headers (functions, types, utils)
-├── functions/              # Exported C entry points
-├── utils/                  # IfcOpenShell helpers, pathfinding, element frames
-└── test/                   # Optional gtest suite + IFC fixtures
+├── CMakeLists.txt
+├── cmake/                  # OCCT compat helpers
+├── include/
+│   ├── openbimrl_c_api.h   # Public C ABI for JNA
+│   └── openbimrl/          # C++ domain headers
+│       ├── model/
+│       ├── geometry/
+│       ├── properties/
+│       ├── pathfinding/
+│       └── ffi/
+├── src/
+│   ├── model/              # IfcSession, GUID, queries
+│   ├── geometry/           # iterators, bounds, polygon, frames
+│   ├── properties/         # IFC property snapshot + JSON
+│   ├── pathfinding/        # Pure edge-cost algorithms
+│   └── ffi/                # C ABI adapters + RuleContext
+└── test/
+    ├── unit/               # No IFC fixtures
+    └── integration/        # IFC fixtures + end-to-end
 ```
 
 ## Dependencies
@@ -27,42 +41,38 @@ C++ shared library (`OpenBIMRL_Native`) wrapping **IfcOpenShell** and **Open CAS
 |------------|---------|
 | [IfcOpenShell](https://github.com/IfcOpenShell/IfcOpenShell) | IFC parsing and geometry kernel |
 | Open CASCADE (OCCT) | B-rep / mesh operations |
-| Eigen3 | Linear algebra (pathfinding) |
+| Eigen3 | Linear algebra |
 | GMP / MPFR | IfcOpenShell numeric support |
 | OpenMP | Parallel pathfinding |
 
 ## Build
-
-Configure and build from this directory:
 
 ```bash
 cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j --target OpenBIMRL_Native
 ```
 
-The shared library is written to `build/libOpenBIMRL_Native.so` (exact path depends on the generator and platform).
-
 ### CMake options
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `OPENBIMRL_USE_PREBUILT_IFCOPENSHELL` | `OFF` | Use a preinstalled IfcOpenShell prefix instead of FetchContent |
-| `OPENBIMRL_IFCOPENSHELL_PREFIX` | `/opt/ifcopenshell` | Prefix with `include/` and `lib/` when prebuilt mode is on |
-| `OPENBIMRL_BUILD_NATIVE_TESTS` | `OFF` | Build the gtest executable `OpenBIMRL_Native_Test` |
-| `OPENBIMRL_ENABLE_ROCM_OFFLOAD` | `OFF` | Enable ROCm OpenMP GPU offloading (requires ROCm Clang) |
-| `OPENBIMRL_ROCM_OFFLOAD_ARCH` | _(empty)_ | GPU arch when offloading is on, e.g. `gfx1100` |
+| `OPENBIMRL_USE_PREBUILT_IFCOPENSHELL` | `OFF` | Use a preinstalled IfcOpenShell prefix |
+| `OPENBIMRL_IFCOPENSHELL_PREFIX` | `/opt/ifcopenshell` | Prefix with `include/` and `lib/` |
+| `OPENBIMRL_STATIC_IFCOPENSHELL` | `OFF` | Link IfcParse/IfcGeom statically into `OpenBIMRL_Native` (FetchContent builds static libs; prebuilt needs `.a`) |
+| `OPENBIMRL_BUILD_NATIVE_TESTS` | `OFF` | Build gtest executables |
+| `OPENBIMRL_ENABLE_ROCM_OFFLOAD` | `OFF` | ROCm OpenMP GPU offloading |
+| `OPENBIMRL_ROCM_OFFLOAD_ARCH` | _(empty)_ | GPU arch, e.g. `gfx1100` |
 
-Example with a preinstalled IfcOpenShell:
+Example with preinstalled IfcOpenShell:
 
 ```bash
 cmake -B build -S . \
   -DOPENBIMRL_USE_PREBUILT_IFCOPENSHELL=ON \
   -DOPENBIMRL_IFCOPENSHELL_PREFIX=/opt/ifcopenshell
-
 cmake --build build -j --target OpenBIMRL_Native
 ```
 
-When IfcOpenShell is not on the default system path, set `LD_LIBRARY_PATH` before running tests or loading the library:
+When IfcOpenShell is not on the default system path:
 
 ```bash
 export LD_LIBRARY_PATH="${OPENBIMRL_IFCOPENSHELL_PREFIX}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
@@ -75,23 +85,21 @@ cmake -B build -S . \
   -DOPENBIMRL_BUILD_NATIVE_TESTS=ON \
   -DOPENBIMRL_USE_PREBUILT_IFCOPENSHELL=ON \
   -DOPENBIMRL_IFCOPENSHELL_PREFIX=/opt/ifcopenshell
-
-cmake --build build -j --target OpenBIMRL_Native_Test
+cmake --build build -j --target OpenBIMRL_Native_UnitTest OpenBIMRL_Native_Test
 ctest --test-dir build --output-on-failure
 ```
 
-Fixtures live under `test/resources/` (see `test/resources/correct.ifc`; other fixtures may be gitignored).
-
 ## Exported API (C ABI)
 
-Graph functions are implemented in C++ but exposed to callers through the **C application binary interface**. Declarations live in `include/functions.h` inside `extern "C" { … }`; implementations are under `functions/`. That keeps exported symbols unmangled (e.g. `getBoundingBox`) and limits the cross-language surface to C-compatible types.
-
-Inputs and outputs use the shared callback protocol in `functions/function.cpp` (`Functions::init_function`), which is also defined in terms of C function pointers and plain data buffers.
+Graph functions are implemented in C++ but exposed through the **C application binary interface** in `openbimrl_c_api.h`. Domain logic lives under `src/{model,geometry,properties,pathfinding}`; `src/ffi` only marshals.
 
 Current entry points:
 
+- `initIfc`, `init_function`
 - `filterByElement`, `filterByGUID`
-- `getBoundingBox`, `getElementFrame`
-- `calculatingBuildingBounds`
+- `getBoundingBox`, `getElementFrame`, `calculatingBuildingBounds`
+- `request_geometry_polygon`, `copy_geometry_polygon`
+- `request_ifc_object_json_size`, `ifc_object_to_json`
+- `calculate_path_edge_costs`
 
-To add a function: create `functions/<name>.cpp`, list it in `CMakeLists.txt`, and add an `extern "C"` declaration in `include/functions.h`.
+To add a function: implement domain logic under `src/`, add a thin adapter in `src/ffi/`, declare it in `openbimrl_c_api.h`, and list the source in `CMakeLists.txt`.

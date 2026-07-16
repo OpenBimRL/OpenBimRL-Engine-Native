@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.25)
 project(OpenBIMRL_Native)
 
 include(FetchContent)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -14,9 +15,7 @@ message("CMake is set to build for: ${CMAKE_BUILD_TYPE}")
 
 set(CMAKE_CXX_FLAGS "-Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
-# set(CMAKE_CXX_FLAGS_RELEASE "-O0")
 
-# Find OpenMP
 find_package(OpenMP REQUIRED)
 if(OpenMP_CXX_FOUND)
     message(STATUS "OpenMP found: ${OpenMP_CXX_VERSION}")
@@ -44,22 +43,27 @@ endif()
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
-set(BUILD_SHARED_LIBS ON)
-
 option(OPENBIMRL_USE_PREBUILT_IFCOPENSHELL
        "Use a preinstalled IfcOpenShell prefix instead of FetchContent" OFF)
 set(OPENBIMRL_IFCOPENSHELL_PREFIX "/opt/ifcopenshell"
     CACHE PATH "IfcOpenShell install prefix (include/, lib/)")
 
+option(OPENBIMRL_STATIC_IFCOPENSHELL
+       "Build/link IfcOpenShell as static libs into OpenBIMRL_Native (FetchContent path)" OFF)
+
 option(OPENBIMRL_BUILD_NATIVE_TESTS "Build C++ gtest suite" OFF)
+
+# Prefer shared by default; static IfcOpenShell bundling is opt-in (#2).
+if(OPENBIMRL_STATIC_IFCOPENSHELL AND NOT OPENBIMRL_USE_PREBUILT_IFCOPENSHELL)
+    set(BUILD_SHARED_LIBS OFF)
+else()
+    set(BUILD_SHARED_LIBS ON)
+endif()
 
 set(SCHEMA_VERSIONS "2x3" "4" "4x3_add2")
 
 find_library(GMP_LIBRARY_FILE NAMES gmp mpir REQUIRED)
-message("found GMP at: ${GMP_LIBRARY_FILE}")
 cmake_path(GET GMP_LIBRARY_FILE PARENT_PATH GMP_LIBRARY_DIR)
-message("transformed GMP dir to: ${GMP_LIBRARY_DIR}")
-
 set(MPFR_LIBRARY_DIR ${GMP_LIBRARY_DIR})
 
 FetchContent_Declare(
@@ -68,8 +72,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(json)
 
-# Ubuntu 22.04 ships OpenCASCADEConfig.cmake in occt-misc under /usr/lib/cmake/opencascade;
-# Debian/bookworm uses /usr/lib/x86_64-linux-gnu/cmake/opencascade.
 if(NOT OpenCASCADE_DIR)
     foreach(_occ_cmake_dir
             "/usr/lib/x86_64-linux-gnu/cmake/opencascade"
@@ -84,77 +86,7 @@ endif()
 find_package(OpenCASCADE REQUIRED)
 find_package(Eigen3 REQUIRED)
 
-# Debian OCCT packages reference unversioned .so names that are not shipped.
-set(_openbimrl_lib_compat "${CMAKE_BINARY_DIR}/lib-compat")
-set(_openbimrl_lib_compat_from "")
-set(_openbimrl_lib_compat_to "")
-macro(_openbimrl_add_lib_compat_symlink _link_name _real_path)
-    if(EXISTS "${_real_path}" AND NOT EXISTS "/usr/lib/x86_64-linux-gnu/${_link_name}")
-        file(MAKE_DIRECTORY "${_openbimrl_lib_compat}")
-        set(_compat_path "${_openbimrl_lib_compat}/${_link_name}")
-        if(NOT EXISTS "${_compat_path}")
-            execute_process(
-                COMMAND ${CMAKE_COMMAND} -E create_symlink "${_real_path}" "${_compat_path}")
-        endif()
-        list(APPEND _openbimrl_lib_compat_from
-             "/usr/lib/x86_64-linux-gnu/${_link_name}")
-        list(APPEND _openbimrl_lib_compat_to "${_compat_path}")
-    endif()
-endmacro()
-
-_openbimrl_add_lib_compat_symlink("libtbb.so" "/usr/lib/x86_64-linux-gnu/libtbb.so.12")
-_openbimrl_add_lib_compat_symlink("libtbbmalloc.so"
-                                  "/usr/lib/x86_64-linux-gnu/libtbbmalloc.so.2")
-_openbimrl_add_lib_compat_symlink("libtcl.so" "/usr/lib/x86_64-linux-gnu/libtcl8.6.so")
-_openbimrl_add_lib_compat_symlink("libtk.so" "/usr/lib/x86_64-linux-gnu/libtk8.6.so")
-
-if(_openbimrl_lib_compat_from)
-    link_directories("${_openbimrl_lib_compat}")
-
-    macro(_openbimrl_apply_lib_compat_replacements _links_str _new_links_var)
-        set(_result "${_links_str}")
-        list(LENGTH _openbimrl_lib_compat_from _compat_count)
-        math(EXPR _last_compat_index "${_compat_count} - 1")
-        foreach(_idx RANGE ${_last_compat_index})
-            list(GET _openbimrl_lib_compat_from ${_idx} _from)
-            list(GET _openbimrl_lib_compat_to ${_idx} _to)
-            string(REPLACE "${_from}" "${_to}" _result "${_result}")
-        endforeach()
-        set(${_new_links_var} "${_result}")
-    endmacro()
-
-    macro(_openbimrl_patch_target_link_paths _target)
-        if(NOT TARGET "${_target}")
-            return()
-        endif()
-        foreach(_prop INTERFACE_LINK_LIBRARIES LINK_LIBRARIES)
-            get_target_property(_links "${_target}" ${_prop})
-            if(_links AND NOT _links STREQUAL "${_prop}-NOTFOUND")
-                list(JOIN _links ";" _links_str)
-                _openbimrl_apply_lib_compat_replacements("${_links_str}" _new_links)
-                if(NOT _new_links STREQUAL _links_str)
-                    set_target_properties("${_target}" PROPERTIES ${_prop}
-                                          "${_new_links}")
-                endif()
-            endif()
-        endforeach()
-    endmacro()
-
-    macro(_openbimrl_patch_occt_link_paths)
-        file(GLOB _occt_cmake_files
-             "/usr/lib/x86_64-linux-gnu/cmake/opencascade/OpenCASCADE*Targets*.cmake")
-        foreach(_occt_file IN LISTS _occt_cmake_files)
-            file(READ "${_occt_file}" _occt_contents)
-            string(REGEX MATCHALL "add_library\\([^ )]+" _occt_targets "${_occt_contents}")
-            foreach(_occt_entry IN LISTS _occt_targets)
-                string(REGEX REPLACE "add_library\\(" "" _occt_target "${_occt_entry}")
-                _openbimrl_patch_target_link_paths("${_occt_target}")
-            endforeach()
-        endforeach()
-    endmacro()
-
-    _openbimrl_patch_occt_link_paths()
-endif()
+include(OcctCompat)
 
 if(OPENBIMRL_USE_PREBUILT_IFCOPENSHELL)
     message(STATUS "Using prebuilt IfcOpenShell from ${OPENBIMRL_IFCOPENSHELL_PREFIX}")
@@ -163,18 +95,27 @@ if(OPENBIMRL_USE_PREBUILT_IFCOPENSHELL)
         "${OPENBIMRL_IFCOPENSHELL_PREFIX}/lib"
         "${OPENBIMRL_IFCOPENSHELL_PREFIX}/lib/x86_64-linux-gnu")
 
-    find_library(_openbimrl_ifc_parse_lib NAMES IfcParse
-                 PATHS ${_ifcos_lib_dirs} REQUIRED NO_DEFAULT_PATH)
-    find_library(_openbimrl_ifc_geom_lib NAMES IfcGeom
-                 PATHS ${_ifcos_lib_dirs} REQUIRED NO_DEFAULT_PATH)
+    if(OPENBIMRL_STATIC_IFCOPENSHELL)
+        find_library(_openbimrl_ifc_parse_lib NAMES libIfcParse.a IfcParse
+                     PATHS ${_ifcos_lib_dirs} REQUIRED NO_DEFAULT_PATH)
+        find_library(_openbimrl_ifc_geom_lib NAMES libIfcGeom.a IfcGeom
+                     PATHS ${_ifcos_lib_dirs} REQUIRED NO_DEFAULT_PATH)
+        set(_openbimrl_ifc_import_type STATIC)
+    else()
+        find_library(_openbimrl_ifc_parse_lib NAMES IfcParse
+                     PATHS ${_ifcos_lib_dirs} REQUIRED NO_DEFAULT_PATH)
+        find_library(_openbimrl_ifc_geom_lib NAMES IfcGeom
+                     PATHS ${_ifcos_lib_dirs} REQUIRED NO_DEFAULT_PATH)
+        set(_openbimrl_ifc_import_type SHARED)
+    endif()
     find_library(_openbimrl_ifc_kernel_lib NAMES geometry_kernel_opencascade
                  PATHS ${_ifcos_lib_dirs} REQUIRED NO_DEFAULT_PATH)
 
-    add_library(IfcParse SHARED IMPORTED GLOBAL)
+    add_library(IfcParse ${_openbimrl_ifc_import_type} IMPORTED GLOBAL)
     set_target_properties(IfcParse PROPERTIES
         IMPORTED_LOCATION "${_openbimrl_ifc_parse_lib}")
 
-    add_library(IfcGeom SHARED IMPORTED GLOBAL)
+    add_library(IfcGeom ${_openbimrl_ifc_import_type} IMPORTED GLOBAL)
     set_target_properties(IfcGeom PROPERTIES
         IMPORTED_LOCATION "${_openbimrl_ifc_geom_lib}")
 
@@ -184,7 +125,9 @@ if(OPENBIMRL_USE_PREBUILT_IFCOPENSHELL)
 
     set(ifcopenshell_SOURCE_DIR "${OPENBIMRL_IFCOPENSHELL_PREFIX}/include")
 else()
-    # configure IfcOpenShell (trim unused targets)
+    if(OPENBIMRL_STATIC_IFCOPENSHELL)
+        message(STATUS "Building IfcOpenShell as static libraries (OPENBIMRL_STATIC_IFCOPENSHELL=ON)")
+    endif()
     set(BUILD_GEOMSERVER OFF)
     set(BUILD_IFCPYTHON OFF)
     set(BUILD_CONVERT OFF)
@@ -215,99 +158,82 @@ else()
     endif()
 endif()
 
-add_library(OpenBIMRL_Native SHARED
-        functions/calculate_building_bounds.cpp
-        functions/filter_by_element.cpp
-        functions/function.cpp
-        functions/filter_by_guid.cpp
-        functions/get_bounding_box.cpp
-        functions/get_element_frame.cpp
-        utils/ifc_init.cpp
-        utils/ifc_serializer.cpp
-        utils/ifc_data.cpp
-        utils/ifc_data_utils.h
-        utils/ifc_data_getters.cpp
-        utils/ifc_data_handlers.cpp
-        utils/ifc_data_utils.cpp
-        utils/ifc_geometry_polygon.cpp
-        utils/pathfinding_omp.cpp
-        utils/guid.cpp
-        utils/ifc_geom_utils.cpp
-        utils/element_frame.cpp
+set(OPENBIMRL_CORE_SOURCES
+        src/model/session.cpp
+        src/geometry/service.cpp
+        src/geometry/mesh_and_polygon.cpp
+        src/geometry/element_frame.cpp
+        src/properties/snapshot.cpp
+        src/properties/ifc_data_utils.cpp
+        src/properties/ifc_data_getters.cpp
+        src/properties/ifc_data_handlers.cpp
+        src/pathfinding/edge_costs.cpp
 )
 
-set_property(TARGET OpenBIMRL_Native PROPERTY POSITION_INDEPENDENT_CODE ON)
-
-target_compile_definitions(OpenBIMRL_Native PRIVATE IFOPSH_WITH_OPENCASCADE)
-
-target_link_libraries(
-        OpenBIMRL_Native
-        PUBLIC TKernel
-        PUBLIC TKMath
-        PUBLIC TKBRep
-        PUBLIC TKGeomBase
-        PUBLIC TKGeomAlgo
-        PUBLIC TKG3d
-        PUBLIC TKG2d
-        PUBLIC TKShHealing
-        PUBLIC TKTopAlgo
-        PUBLIC TKMesh
-        PUBLIC TKPrim
-        PUBLIC TKBool
-        PUBLIC TKBO
-        PUBLIC TKFillet
-        PUBLIC TKXSBase
-        PUBLIC TKOffset
-        PUBLIC TKHLR
-        PUBLIC nlohmann_json::nlohmann_json
-        PUBLIC IfcParse
-        PUBLIC IfcGeom
-        PUBLIC geometry_kernel_opencascade
+set(OPENBIMRL_FFI_SOURCES
+        src/ffi/rule_context.cpp
+        src/ffi/session_and_init.cpp
+        src/ffi/ops.cpp
 )
 
-if(OPENBIMRL_USE_PREBUILT_IFCOPENSHELL)
-    target_include_directories(OpenBIMRL_Native PUBLIC
-        "${OPENBIMRL_IFCOPENSHELL_PREFIX}/include")
-else()
-    FetchContent_GetProperties(ifcopenshell)
-    target_include_directories(OpenBIMRL_Native PUBLIC
-        "${ifcopenshell_SOURCE_DIR}/src")
-endif()
+add_library(openbimrl_core STATIC ${OPENBIMRL_CORE_SOURCES})
+set_property(TARGET openbimrl_core PROPERTY POSITION_INDEPENDENT_CODE ON)
+target_compile_definitions(openbimrl_core PUBLIC IFOPSH_WITH_OPENCASCADE)
 
-target_include_directories(OpenBIMRL_Native PUBLIC
+target_include_directories(openbimrl_core PUBLIC
     "${CMAKE_SOURCE_DIR}/include"
-    "${CMAKE_SOURCE_DIR}/utils"
+    "${CMAKE_SOURCE_DIR}/src/properties"
     "/usr/include/opencascade"
     "/usr/include/oce")
 
-target_link_libraries(OpenBIMRL_Native PUBLIC Eigen3::Eigen)
+if(OPENBIMRL_USE_PREBUILT_IFCOPENSHELL)
+    target_include_directories(openbimrl_core PUBLIC
+        "${OPENBIMRL_IFCOPENSHELL_PREFIX}/include")
+else()
+    FetchContent_GetProperties(ifcopenshell)
+    target_include_directories(openbimrl_core PUBLIC
+        "${ifcopenshell_SOURCE_DIR}/src")
+endif()
+
+target_link_libraries(openbimrl_core PUBLIC
+        TKernel TKMath TKBRep TKGeomBase TKGeomAlgo TKG3d TKG2d
+        TKShHealing TKTopAlgo TKMesh TKPrim TKBool TKBO TKFillet
+        TKXSBase TKOffset TKHLR
+        nlohmann_json::nlohmann_json
+        IfcParse IfcGeom geometry_kernel_opencascade
+        Eigen3::Eigen
+        OpenMP::OpenMP_CXX)
+
+add_library(OpenBIMRL_Native SHARED ${OPENBIMRL_FFI_SOURCES})
+set_property(TARGET OpenBIMRL_Native PROPERTY POSITION_INDEPENDENT_CODE ON)
+target_link_libraries(OpenBIMRL_Native PUBLIC openbimrl_core)
+if(OPENBIMRL_STATIC_IFCOPENSHELL)
+    # Keep IfcOpenShell symbols inside the JNI/JNA shared object when possible.
+    set_target_properties(OpenBIMRL_Native PROPERTIES
+        LINK_FLAGS "-Wl,--exclude-libs,ALL")
+endif()
 
 if(OPENBIMRL_BUILD_NATIVE_TESTS)
     FetchContent_Declare(
             googletest
             URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
     )
-
     FetchContent_MakeAvailable(googletest)
-
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-
     enable_testing()
 
-    add_definitions(-DRESOURCES_DIR="${CMAKE_SOURCE_DIR}/test/resources")
-
-    add_executable(
-            OpenBIMRL_Native_Test
-            test/src/test.cpp
-            test/src/ifc_elements.h
-    )
-
-    target_link_libraries(
-            OpenBIMRL_Native_Test PRIVATE
-            OpenBIMRL_Native
-            GTest::gtest_main
-    )
-
+    add_executable(OpenBIMRL_Native_UnitTest
+            test/unit/edge_costs_test.cpp)
+    target_link_libraries(OpenBIMRL_Native_UnitTest PRIVATE
+            openbimrl_core GTest::gtest_main)
     include(GoogleTest)
+    gtest_discover_tests(OpenBIMRL_Native_UnitTest)
+
+    add_definitions(-DRESOURCES_DIR="${CMAKE_SOURCE_DIR}/test/integration/resources")
+    add_executable(OpenBIMRL_Native_Test
+            test/integration/test.cpp
+            test/integration/ifc_elements.h)
+    target_link_libraries(OpenBIMRL_Native_Test PRIVATE
+            OpenBIMRL_Native GTest::gtest_main)
     gtest_discover_tests(OpenBIMRL_Native_Test)
 endif()
