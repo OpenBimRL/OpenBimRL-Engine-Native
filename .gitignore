@@ -11,12 +11,12 @@ CTestTestfile.cmake
 _deps
 cmake-build-debug
 cmake-build-release
+build/
 
 # IDE stuff
 .idea
 .vscode
 
-!/test/integration/resources/correct.ifc
+# Ignore non-fixture junk under resources; keep IFC files for CI.
 /test/integration/resources/*
-!/test/resources/correct.ifc
-/test/resources/*
+!/test/integration/resources/*.ifc

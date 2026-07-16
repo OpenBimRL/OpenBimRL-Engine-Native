@@ -4,6 +4,8 @@ name: CMake on a single platform
 on:
   push:
     branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
   build:
@@ -59,6 +61,18 @@ jobs:
             tk-dev \
             xfonts-scalable
 
+      - name: Verify IFC test fixtures
+        run: |
+          set -euo pipefail
+          for f in correct.ifc rail_test.ifc rails_parallel_gauge.ifc walls_parallel.ifc; do
+            path="test/integration/resources/${f}"
+            if [[ ! -f "${path}" ]]; then
+              echo "::error::Missing IFC fixture: ${path}"
+              exit 1
+            fi
+            echo "Found ${path} ($(wc -c < "${path}") bytes)"
+          done
+
       - name: Configure CMake
         run: |
           cmake -G Ninja -B build -S . \
@@ -68,8 +82,12 @@ jobs:
             -DOPENBIMRL_BUILD_NATIVE_TESTS=ON
 
       - name: Build
-        run: cmake --build build --target OpenBIMRL_Native_Test -j "$(nproc)"
+        run: |
+          cmake --build build -j "$(nproc)" \
+            --target OpenBIMRL_Native OpenBIMRL_Native_UnitTest OpenBIMRL_Native_Test
 
       - name: Test
-        working-directory: build
-        run: ./OpenBIMRL_Native_Test
+        run: |
+          set -euo pipefail
+          # ctest returns non-zero if any discovered gtest fails → job fails.
+          ctest --test-dir build --output-on-failure
