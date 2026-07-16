@@ -1,4 +1,5 @@
 # Native library: configure, build, and run C++ tests on Ubuntu 22.04.
+# On successful main pushes, publish lib.so as a GitHub Release.
 name: CMake on a single platform
 
 on:
@@ -7,9 +8,15 @@ on:
   pull_request:
     branches: [ "main" ]
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-22.04
+    # Releases need write; PRs keep read-only.
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -91,3 +98,46 @@ jobs:
           set -euo pipefail
           # ctest returns non-zero if any discovered gtest fails → job fails.
           ctest --test-dir build --output-on-failure
+
+      - name: Package binary
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        id: package
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp -f build/libOpenBIMRL_Native.so dist/lib.so
+          # Include FetchContent IfcOpenShell runtime libs when present (dynamic link).
+          while IFS= read -r -d '' f; do
+            cp -a "$f" dist/
+          done < <(find build/_deps/ifcopenshell-build -type f \
+            \( -name 'libIfcParse.so*' -o -name 'libIfcGeom.so*' \
+               -o -name 'libgeometry_kernel_opencascade.so*' \) -print0 2>/dev/null || true)
+
+          TAG="v$(date -u +%Y.%m.%d)-${GITHUB_SHA::7}"
+          ARCHIVE="OpenBIMRL_Native-linux-x86_64-${TAG}.tar.gz"
+          tar -C dist -czf "${ARCHIVE}" .
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "archive=${ARCHIVE}" >> "$GITHUB_OUTPUT"
+          ls -lh dist/ "${ARCHIVE}"
+
+      - name: Create GitHub Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.package.outputs.tag }}
+          name: OpenBIMRL Native ${{ steps.package.outputs.tag }}
+          body: |
+            Automated release from `main` after C++ tests passed.
+
+            **Artifacts**
+            - `lib.so` — JNA-loadable `OpenBIMRL_Native` shared library
+            - `${{ steps.package.outputs.archive }}` — `lib.so` plus IfcOpenShell runtime `.so`s from this build (when built via FetchContent)
+
+            **Commit:** ${{ github.sha }}
+          files: |
+            dist/lib.so
+            ${{ steps.package.outputs.archive }}
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
