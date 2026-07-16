@@ -18,7 +18,7 @@ jobs:
           path: |
             ~/.cache/ccache
             ~/.cache/openbimrl/native/cmake
-          key: native-cpp-${{ hashFiles('CMakeLists.txt') }}-ios-eafa158
+          key: native-cpp-${{ hashFiles('CMakeLists.txt', '.github/workflows/cmake-test.yml') }}-ios-eafa158
           restore-keys: |
             native-cpp-
 
@@ -35,6 +35,7 @@ jobs:
             ccache \
             libboost-all-dev \
             libeigen3-dev \
+            libgl1-mesa-dev \
             libgmp-dev \
             libhdf5-dev \
             libmpfr-dev \
@@ -46,7 +47,12 @@ jobs:
             libocct-ocaf-dev \
             libocct-visualization-dev \
             libtbb-dev \
+            libx11-dev \
+            libxext-dev \
+            libxi-dev \
+            libxmu-dev \
             libxml2-dev \
+            libxt-dev \
             ninja-build \
             occt-misc \
             tcl-dev \
