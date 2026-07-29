@@ -141,8 +141,14 @@ gp_Ax3 resolveObjectPlacement(const IfcUtil::IfcBaseEntity* placement) {
         const auto parentAttr = placement->get("PlacementRelTo");
         if (!parentAttr.isNull()) {
             gp_Ax3 parent = resolveObjectPlacement(asEntity(parentAttr));
+            // RelativePlacement stores parent-local coordinates in gp_Pnt.
+            // SetTransformation(parent, world) converts those into world space:
+            //   world = parent.Location + parent.Rotation * local
+            // The single-arg SetTransformation(parent) is NOT equivalent and
+            // yields ~(-site) for georeferenced models — straights vanished while
+            // bboxes (different code path) still appeared on the mesh.
             gp_Trsf parentTrsf;
-            parentTrsf.SetTransformation(parent);
+            parentTrsf.SetTransformation(parent, gp_Ax3());
             relative.Transform(parentTrsf);
         }
         return relative;
@@ -164,7 +170,7 @@ gp_Ax3 resolveObjectPlacement(const IfcUtil::IfcBaseEntity* placement) {
         if (!parentAttr.isNull()) {
             gp_Ax3 parent = resolveObjectPlacement(asEntity(parentAttr));
             gp_Trsf parentTrsf;
-            parentTrsf.SetTransformation(parent);
+            parentTrsf.SetTransformation(parent, gp_Ax3());
             relative.Transform(parentTrsf);
         }
         return relative;
