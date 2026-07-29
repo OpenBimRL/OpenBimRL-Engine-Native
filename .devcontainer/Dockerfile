@@ -1,4 +1,4 @@
-FROM rocm/dev-ubuntu-22.04:7.1.1 AS rocm-llvm
+FROM rocm/dev-ubuntu-24.04:7.1.1 AS rocm-llvm
 FROM mcr.microsoft.com/devcontainers/cpp:1-debian-12
 
 USER root
