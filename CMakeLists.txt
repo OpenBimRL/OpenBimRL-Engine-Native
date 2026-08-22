@@ -340,5 +340,15 @@ if(OPENBIMRL_BUILD_NATIVE_TESTS)
             test/integration/ifc_elements.h)
     target_link_libraries(OpenBIMRL_Native_Test PRIVATE
             OpenBIMRL_Native GTest::gtest_main)
-    gtest_discover_tests(OpenBIMRL_Native_Test)
+    # gtest_discover_tests (POST_BUILD) execs the binary at build time; the
+    # loader must find libOpenBIMRL_Native.so in the build dir (same place as
+    # the test). PRE_TEST defers discovery to ctest; BUILD_RPATH covers both.
+    set_target_properties(OpenBIMRL_Native_Test PROPERTIES
+            BUILD_RPATH "${CMAKE_BINARY_DIR}"
+            BUILD_RPATH_USE_ORIGIN TRUE
+            INSTALL_RPATH "$ORIGIN")
+    gtest_discover_tests(OpenBIMRL_Native_Test
+            DISCOVERY_MODE PRE_TEST
+            PROPERTIES
+                ENVIRONMENT "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}:$ENV{LD_LIBRARY_PATH}")
 endif()

@@ -246,13 +246,15 @@ jobs:
             -DOPENBIMRL_BUILD_NATIVE_TESTS=ON
 
       - name: Build OpenBIMRL_Native_Test
-        run: cmake --build build-integration -j"$(nproc)" --target OpenBIMRL_Native_Test
+        run: |
+          # Ensure discovery/link can resolve libOpenBIMRL_Native.so in the build dir
+          # (gtest_discover_tests may still probe the binary depending on CMake version).
+          export LD_LIBRARY_PATH="${PWD}/build-integration:/opt/ifcopenshell/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+          cmake --build build-integration -j"$(nproc)" --target OpenBIMRL_Native_Test
 
       - name: Run IFC integration tests
         run: |
-          export LD_LIBRARY_PATH="/opt/ifcopenshell/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
-          # Run the gtest binary directly (gtest_discover_tests names are TEST() ids,
-          # not the executable name, so -R OpenBIMRL_Native_Test would match nothing).
+          export LD_LIBRARY_PATH="${PWD}/build-integration:/opt/ifcopenshell/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
           ./build-integration/OpenBIMRL_Native_Test
 
   build-rocm:
