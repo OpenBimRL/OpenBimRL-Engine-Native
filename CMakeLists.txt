@@ -25,9 +25,45 @@ endif()
 option(OPENBIMRL_ENABLE_ROCM_OFFLOAD "Enable ROCm OpenMP GPU offloading" OFF)
 set(OPENBIMRL_ROCM_OFFLOAD_ARCH "" CACHE STRING "ROCm offload architecture, e.g. gfx1100")
 
+option(OPENBIMRL_ENABLE_CUDA_OFFLOAD
+       "Enable NVIDIA CUDA OpenMP GPU offloading (experimental / WIP)" OFF)
+set(OPENBIMRL_CUDA_OFFLOAD_ARCH "" CACHE STRING
+    "CUDA offload architecture, e.g. sm_89 (passed to --offload-arch)")
+
+# Env / Bazel action_env can supply the arch when the cache value is empty
+# (matches historical Makefile + Dockerfile.dev OPENBIMRL_ROCM_OFFLOAD_ARCH).
+if(NOT OPENBIMRL_ROCM_OFFLOAD_ARCH AND DEFINED ENV{OPENBIMRL_ROCM_OFFLOAD_ARCH}
+        AND NOT "$ENV{OPENBIMRL_ROCM_OFFLOAD_ARCH}" STREQUAL "")
+    set(OPENBIMRL_ROCM_OFFLOAD_ARCH "$ENV{OPENBIMRL_ROCM_OFFLOAD_ARCH}")
+endif()
+if(NOT OPENBIMRL_CUDA_OFFLOAD_ARCH AND DEFINED ENV{OPENBIMRL_CUDA_OFFLOAD_ARCH}
+        AND NOT "$ENV{OPENBIMRL_CUDA_OFFLOAD_ARCH}" STREQUAL "")
+    set(OPENBIMRL_CUDA_OFFLOAD_ARCH "$ENV{OPENBIMRL_CUDA_OFFLOAD_ARCH}")
+endif()
+
+if(OPENBIMRL_ENABLE_ROCM_OFFLOAD AND OPENBIMRL_ENABLE_CUDA_OFFLOAD)
+    message(FATAL_ERROR
+        "Enable only one of OPENBIMRL_ENABLE_ROCM_OFFLOAD or OPENBIMRL_ENABLE_CUDA_OFFLOAD")
+endif()
+
 if(OPENBIMRL_ENABLE_ROCM_OFFLOAD)
     if(NOT OPENBIMRL_ROCM_OFFLOAD_ARCH)
-        message(FATAL_ERROR "OPENBIMRL_ENABLE_ROCM_OFFLOAD=ON requires OPENBIMRL_ROCM_OFFLOAD_ARCH")
+        set(_openbimrl_rocminfo "/opt/rocm/bin/rocminfo")
+        if(EXISTS "${_openbimrl_rocminfo}")
+            execute_process(
+                COMMAND ${_openbimrl_rocminfo}
+                OUTPUT_VARIABLE _openbimrl_rocminfo_out
+                ERROR_QUIET
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
+            string(REGEX MATCH "gfx[0-9a-z]+" OPENBIMRL_ROCM_OFFLOAD_ARCH
+                   "${_openbimrl_rocminfo_out}")
+        endif()
+        if(NOT OPENBIMRL_ROCM_OFFLOAD_ARCH)
+            message(FATAL_ERROR
+                "OPENBIMRL_ENABLE_ROCM_OFFLOAD=ON requires OPENBIMRL_ROCM_OFFLOAD_ARCH "
+                "(e.g. gfx1100), or a working ${_openbimrl_rocminfo} with a visible GPU")
+        endif()
+        message(STATUS "Detected ROCm offload arch: ${OPENBIMRL_ROCM_OFFLOAD_ARCH}")
     endif()
     if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         message(FATAL_ERROR
@@ -41,6 +77,48 @@ if(OPENBIMRL_ENABLE_ROCM_OFFLOAD)
     )
 endif()
 
+# NVIDIA path mirrors ROCm structurally. Device offload with host clang + CUDA
+# toolkit is experimental; prefer nvcc.dockerfile / --config=cuda_offload for CI
+# scaffolding. See https://developer.nvidia.com/cuda-llvm-compiler
+if(OPENBIMRL_ENABLE_CUDA_OFFLOAD)
+    # Optional arch: empty → try nvidia-smi (mirrors ROCm/rocminfo).
+    if(NOT OPENBIMRL_CUDA_OFFLOAD_ARCH)
+        find_program(_openbimrl_nvidia_smi nvidia-smi)
+        if(_openbimrl_nvidia_smi)
+            execute_process(
+                COMMAND ${_openbimrl_nvidia_smi}
+                    --query-gpu=compute_cap --format=csv,noheader
+                OUTPUT_VARIABLE _openbimrl_cuda_caps
+                ERROR_QUIET
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
+            # "8.9" → sm_89; take first GPU if several.
+            string(REGEX REPLACE "\n.*" "" _openbimrl_cuda_cap "${_openbimrl_cuda_caps}")
+            string(REGEX REPLACE "\\." "" _openbimrl_cuda_sm "${_openbimrl_cuda_cap}")
+            if(_openbimrl_cuda_sm MATCHES "^[0-9]+$")
+                set(OPENBIMRL_CUDA_OFFLOAD_ARCH "sm_${_openbimrl_cuda_sm}")
+            endif()
+        endif()
+        if(NOT OPENBIMRL_CUDA_OFFLOAD_ARCH)
+            message(FATAL_ERROR
+                "OPENBIMRL_ENABLE_CUDA_OFFLOAD=ON requires OPENBIMRL_CUDA_OFFLOAD_ARCH "
+                "(e.g. sm_89), or a working nvidia-smi with a visible GPU")
+        endif()
+        message(STATUS "Detected CUDA offload arch: ${OPENBIMRL_CUDA_OFFLOAD_ARCH}")
+    endif()
+    if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        message(FATAL_ERROR
+            "CUDA OpenMP offloading requires a Clang compiler, but got '${CMAKE_CXX_COMPILER_ID}' at '${CMAKE_CXX_COMPILER}'. "
+            "Configure with system or CUDA-capable clang, e.g. -DCMAKE_CXX_COMPILER=/usr/bin/clang++"
+        )
+    endif()
+    message(WARNING
+        "CUDA OpenMP offload is experimental/WIP; flags may require a CUDA-capable "
+        "clang and further cmake work. Arch=${OPENBIMRL_CUDA_OFFLOAD_ARCH}")
+    message(STATUS "CUDA OpenMP offloading enabled for arch: ${OPENBIMRL_CUDA_OFFLOAD_ARCH}")
+    set(CMAKE_CXX_FLAGS
+        "${CMAKE_CXX_FLAGS} -fopenmp-targets=nvptx64-nvidia-cuda --offload-arch=${OPENBIMRL_CUDA_OFFLOAD_ARCH}"
+    )
+endif()
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
 option(OPENBIMRL_USE_PREBUILT_IFCOPENSHELL
@@ -66,10 +144,27 @@ find_library(GMP_LIBRARY_FILE NAMES gmp mpir REQUIRED)
 cmake_path(GET GMP_LIBRARY_FILE PARENT_PATH GMP_LIBRARY_DIR)
 set(MPFR_LIBRARY_DIR ${GMP_LIBRARY_DIR})
 
-FetchContent_Declare(
-        json
-        URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
-)
+# Optional local source (Bazel-vendored) skips the URL download.
+# Accepts either the json source root or a path to its CMakeLists.txt.
+set(OPENBIMRL_JSON_SOURCE_DIR "" CACHE PATH
+    "Local nlohmann/json source dir (or CMakeLists.txt); empty uses FetchContent URL")
+if(OPENBIMRL_JSON_SOURCE_DIR)
+    if(EXISTS "${OPENBIMRL_JSON_SOURCE_DIR}/CMakeLists.txt")
+        set(_openbimrl_json_root "${OPENBIMRL_JSON_SOURCE_DIR}")
+    elseif(EXISTS "${OPENBIMRL_JSON_SOURCE_DIR}" AND
+           "${OPENBIMRL_JSON_SOURCE_DIR}" MATCHES "CMakeLists\\.txt$")
+        get_filename_component(_openbimrl_json_root "${OPENBIMRL_JSON_SOURCE_DIR}" DIRECTORY)
+    else()
+        message(FATAL_ERROR
+            "OPENBIMRL_JSON_SOURCE_DIR must be a nlohmann/json source tree or its CMakeLists.txt, got: ${OPENBIMRL_JSON_SOURCE_DIR}")
+    endif()
+    FetchContent_Declare(json SOURCE_DIR "${_openbimrl_json_root}")
+else()
+    FetchContent_Declare(
+            json
+            URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
+    )
+endif()
 FetchContent_MakeAvailable(json)
 
 if(NOT OpenCASCADE_DIR)
@@ -90,6 +185,9 @@ include(OcctCompat)
 
 if(OPENBIMRL_USE_PREBUILT_IFCOPENSHELL)
     message(STATUS "Using prebuilt IfcOpenShell from ${OPENBIMRL_IFCOPENSHELL_PREFIX}")
+    # Keep IfcOpenShell discoverable after the .so is copied out of the build tree (JNA).
+    set(CMAKE_INSTALL_RPATH "${OPENBIMRL_IFCOPENSHELL_PREFIX}/lib")
+    set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 
     set(_ifcos_lib_dirs
         "${OPENBIMRL_IFCOPENSHELL_PREFIX}/lib"
@@ -212,6 +310,13 @@ if(OPENBIMRL_STATIC_IFCOPENSHELL)
     set_target_properties(OpenBIMRL_Native PROPERTIES
         LINK_FLAGS "-Wl,--exclude-libs,ALL")
 endif()
+
+# rules_foreign_cc (and plain cmake --install) package the JNA shared library + C ABI header.
+install(TARGETS OpenBIMRL_Native
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib
+        RUNTIME DESTINATION bin)
+install(FILES include/openbimrl_c_api.h DESTINATION include)
 
 if(OPENBIMRL_BUILD_NATIVE_TESTS)
     FetchContent_Declare(

@@ -1,0 +1,44 @@
+# Native module: pathfinding unit tests via Bazel (linux/amd64 only).
+# Repo root for this workflow is OpenBimRL-Engine-Native (submodule checkout).
+# IFC integration gtests (OpenBIMRL_Native_Test) stay local CMake/ctest; Engine
+# JVM //:engine_tests cover native via JNA. Versioned .so GitHub Releases are
+# release.yml; Engine jar packaging remains maven-publish / Docker.
+name: Bazel unit tests
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    env:
+      CC: /usr/bin/clang
+      CXX: /usr/bin/clang++
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install apt dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang \
+            libomp-dev \
+            libomp5
+          clang++ --version
+
+      - name: Install Bazelisk
+        uses: bazel-contrib/setup-bazel@0.15.0
+        with:
+          bazelisk-cache: true
+          disk-cache: true
+          repository-cache: true
+
+      - name: Bazel unit tests
+        run: bazel test //:native_unit_tests

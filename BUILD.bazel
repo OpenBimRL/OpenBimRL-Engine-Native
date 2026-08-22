@@ -1,0 +1,169 @@
+# OpenBimRL-Engine-Native — rules_foreign_cc cmake around this package root.
+# Unit tests that need no IFC (pathfinding) are native Bazel cc_test targets
+# (CI: .github/workflows/bazel-test.yml). Full IFC gtests stay on local CMake
+# (`OPENBIMRL_BUILD_NATIVE_TESTS` / ctest); not run in native GitHub Actions.
+
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "cmake")
+
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "cmake_srcs",
+    srcs = glob(
+        [
+            "**/*.cpp",
+            "**/*.h",
+            "**/*.hpp",
+            "CMakeLists.txt",
+            "cmake/**/*.cmake",
+        ],
+        exclude = [
+            ".git/**",
+            "test/**",
+            ".devcontainer/**",
+            "third_party/**",
+        ],
+    ),
+)
+
+# ---------------------------------------------------------------------------
+# Pathfinding unit tests (Bazel) — same sources as CMake OpenBIMRL_Native_UnitTest.
+# Self-contained: no IfcOpenShell / OCCT / foreign_cc. Uses host clang + libomp.
+# ---------------------------------------------------------------------------
+
+cc_library(
+    name = "pathfinding_edge_costs",
+    srcs = ["src/pathfinding/edge_costs.cpp"],
+    hdrs = [
+        "include/openbimrl/pathfinding/edge_costs.hpp",
+        "include/openbimrl/pathfinding/types.hpp",
+    ],
+    copts = [
+        "-std=c++23",
+        "-fopenmp",
+    ],
+    includes = ["include"],
+    linkopts = ["-fopenmp"],
+)
+
+cc_test(
+    name = "edge_costs_test",
+    size = "small",
+    srcs = ["test/unit/edge_costs_test.cpp"],
+    copts = ["-std=c++23"],
+    deps = [
+        ":pathfinding_edge_costs",
+        "@googletest//:gtest_main",
+    ],
+)
+
+# Aggregate for `bazel test //:native_unit_tests` from this module root.
+test_suite(
+    name = "native_unit_tests",
+    tests = [":edge_costs_test"],
+)
+
+# Opt-in ROCm OpenMP GPU offload: --config=rocm_offload (or
+# --define OPENBIMRL_ENABLE_ROCM_OFFLOAD=ON). Pass arch via
+# OPENBIMRL_ROCM_OFFLOAD_ARCH (action_env) or let CMake auto-detect via rocminfo.
+config_setting(
+    name = "rocm_offload_enabled",
+    define_values = {"OPENBIMRL_ENABLE_ROCM_OFFLOAD": "ON"},
+)
+
+# Opt-in NVIDIA CUDA OpenMP offload (WIP): --config=cuda_offload.
+config_setting(
+    name = "cuda_offload_enabled",
+    define_values = {"OPENBIMRL_ENABLE_CUDA_OFFLOAD": "ON"},
+)
+
+# Shared library for JNA (Engine packages as libOpenBimRL-Engine-Native-x86_64.so).
+#
+# Default: system LLVM clang + libomp (.bazelrc pins /usr/bin/clang).
+# Dev images at repo root: llvm.dockerfile / rocm.dockerfile / nvcc.dockerfile
+# (point .devcontainer/devcontainer.json at the one you want).
+# ROCm offload: ROCm LLVM at /opt/rocm/llvm.
+# CUDA offload (WIP): host clang + CUDA toolkit (nvcc) for device hooks.
+cmake(
+    name = "openbimrl_native",
+    build_args = [
+        "--verbose",
+        "--parallel",
+    ],
+    build_data = [
+        "@nlohmann_json_src//:CMakeLists.txt",
+        "@nlohmann_json_src//:all_srcs",
+    ],
+    cache_entries = select({
+        ":rocm_offload_enabled": {
+            "BUILD_SHARED_LIBS": "ON",
+            "CMAKE_BUILD_TYPE": "Release",
+            "CMAKE_C_COMPILER": "/opt/rocm/llvm/bin/clang",
+            "CMAKE_CXX_COMPILER": "/opt/rocm/llvm/bin/clang++",
+            "OPENBIMRL_BUILD_NATIVE_TESTS": "OFF",
+            "OPENBIMRL_ENABLE_ROCM_OFFLOAD": "ON",
+            "OPENBIMRL_ENABLE_CUDA_OFFLOAD": "OFF",
+            "OPENBIMRL_IFCOPENSHELL_PREFIX": "/opt/ifcopenshell",
+            "OPENBIMRL_JSON_SOURCE_DIR": "$(execpath @nlohmann_json_src//:CMakeLists.txt)",
+            "OPENBIMRL_USE_PREBUILT_IFCOPENSHELL": "ON",
+        },
+        ":cuda_offload_enabled": {
+            "BUILD_SHARED_LIBS": "ON",
+            "CMAKE_BUILD_TYPE": "Release",
+            "CMAKE_C_COMPILER": "/usr/bin/clang",
+            "CMAKE_CXX_COMPILER": "/usr/bin/clang++",
+            "OPENBIMRL_BUILD_NATIVE_TESTS": "OFF",
+            "OPENBIMRL_ENABLE_ROCM_OFFLOAD": "OFF",
+            "OPENBIMRL_ENABLE_CUDA_OFFLOAD": "ON",
+            "OPENBIMRL_IFCOPENSHELL_PREFIX": "/opt/ifcopenshell",
+            "OPENBIMRL_JSON_SOURCE_DIR": "$(execpath @nlohmann_json_src//:CMakeLists.txt)",
+            "OPENBIMRL_USE_PREBUILT_IFCOPENSHELL": "ON",
+        },
+        "//conditions:default": {
+            "BUILD_SHARED_LIBS": "ON",
+            "CMAKE_BUILD_TYPE": "Release",
+            "CMAKE_C_COMPILER": "/usr/bin/clang",
+            "CMAKE_CXX_COMPILER": "/usr/bin/clang++",
+            "OPENBIMRL_BUILD_NATIVE_TESTS": "OFF",
+            "OPENBIMRL_ENABLE_ROCM_OFFLOAD": "OFF",
+            "OPENBIMRL_ENABLE_CUDA_OFFLOAD": "OFF",
+            "OPENBIMRL_IFCOPENSHELL_PREFIX": "/opt/ifcopenshell",
+            "OPENBIMRL_JSON_SOURCE_DIR": "$(execpath @nlohmann_json_src//:CMakeLists.txt)",
+            "OPENBIMRL_USE_PREBUILT_IFCOPENSHELL": "ON",
+        },
+    }),
+    env = select({
+        ":rocm_offload_enabled": {
+            "CC": "/opt/rocm/llvm/bin/clang",
+            "CXX": "/opt/rocm/llvm/bin/clang++",
+            # Inherited from client env via .bazelrc --action_env=OPENBIMRL_ROCM_OFFLOAD_ARCH
+            "OPENBIMRL_ROCM_OFFLOAD_ARCH": "$(OPENBIMRL_ROCM_OFFLOAD_ARCH)",
+        },
+        ":cuda_offload_enabled": {
+            "CC": "/usr/bin/clang",
+            "CXX": "/usr/bin/clang++",
+            "CUDA_HOME": "$(CUDA_HOME)",
+            "OPENBIMRL_CUDA_OFFLOAD_ARCH": "$(OPENBIMRL_CUDA_OFFLOAD_ARCH)",
+        },
+        "//conditions:default": {
+            "CC": "/usr/bin/clang",
+            "CXX": "/usr/bin/clang++",
+        },
+    }),
+    generate_args = [
+        "-GNinja",
+    ],
+    generate_crosstool_file = False,
+    lib_source = ":cmake_srcs",
+    out_include_dir = "include",
+    out_shared_libs = ["libOpenBIMRL_Native.so"],
+    tags = [
+        "no-remote",
+        "no-sandbox",
+    ],
+    targets = [
+        "OpenBIMRL_Native",
+        "install",
+    ],
+)

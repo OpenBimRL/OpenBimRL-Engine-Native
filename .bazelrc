@@ -1,0 +1,32 @@
+# openbimrl_native — compilers come from the image / CI env (Dockerfiles set
+# CC=/usr/bin/clang for llvm & nvcc). Do not hard-pin /usr/bin/clang globally so
+# ROCm-only containers can build with --config=rocm_offload.
+# cmake() also sets compilers per config in BUILD.bazel.
+
+common --enable_bzlmod
+common --noenable_workspace
+
+# ROCm: use ROCm LLVM for Bazel actions (matches BUILD.bazel cmake env).
+build:rocm_offload --define=OPENBIMRL_ENABLE_ROCM_OFFLOAD=ON
+build:rocm_offload --action_env=CC=/opt/rocm/llvm/bin/clang
+build:rocm_offload --action_env=CXX=/opt/rocm/llvm/bin/clang++
+build:rocm_offload --host_action_env=CC=/opt/rocm/llvm/bin/clang
+build:rocm_offload --host_action_env=CXX=/opt/rocm/llvm/bin/clang++
+build:rocm_offload --repo_env=CC=/opt/rocm/llvm/bin/clang
+build:rocm_offload --repo_env=CXX=/opt/rocm/llvm/bin/clang++
+
+# CUDA offload (WIP): host clang + CUDA toolkit from the nvcc image.
+build:cuda_offload --define=OPENBIMRL_ENABLE_CUDA_OFFLOAD=ON
+build:cuda_offload --action_env=CC=/usr/bin/clang
+build:cuda_offload --action_env=CXX=/usr/bin/clang++
+build:cuda_offload --host_action_env=CC=/usr/bin/clang
+build:cuda_offload --host_action_env=CXX=/usr/bin/clang++
+build:cuda_offload --repo_env=CC=/usr/bin/clang
+build:cuda_offload --repo_env=CXX=/usr/bin/clang++
+
+build --action_env=OPENBIMRL_ROCM_OFFLOAD_ARCH
+build --action_env=OPENBIMRL_CUDA_OFFLOAD_ARCH
+build --action_env=CUDA_HOME
+
+test --test_output=errors
+test --test_summary=detailed

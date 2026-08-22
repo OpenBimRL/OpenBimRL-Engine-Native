@@ -1,0 +1,53 @@
+"""OpenBimRL-Engine-Native Bazel module.
+
+Owns the rules_foreign_cc cmake packaging of OpenBIMRL_Native and the
+vendored nlohmann/json source used by CMake (OPENBIMRL_JSON_SOURCE_DIR).
+
+Consumed by openbimrl_engine via bazel_dep + local_path_override (submodule
+checkout at Engine/src/main/cpp). Standalone: bazel build //:openbimrl_native
+from this directory.
+"""
+
+module(
+    name = "openbimrl_native",
+    version = "0.1.0",
+)
+
+bazel_dep(name = "rules_foreign_cc", version = "0.15.1")
+bazel_dep(name = "rules_cc", version = "0.2.17")
+bazel_dep(name = "platforms", version = "1.0.0")
+
+# Prefer host cmake/ninja/make/pkg-config over foreign_cc built-from-source
+# toolchains (those bootstrap with Bazel's CC; Engine/native .bazelrc pin
+# system clang so host tools stay off ROCm clang when it is first on PATH).
+register_toolchains(
+    "@rules_foreign_cc//toolchains:preinstalled_cmake_toolchain",
+    "@rules_foreign_cc//toolchains:preinstalled_ninja_toolchain",
+    "@rules_foreign_cc//toolchains:preinstalled_make_toolchain",
+    "@rules_foreign_cc//toolchains:preinstalled_pkgconfig_toolchain",
+)
+
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+# gtest via http_archive + BUILD overlay (BCR googletest still uses bare
+# cc_library, which Bazel 9 rejects). Same release as CMake FetchContent.
+http_archive(
+    name = "googletest",
+    build_file = "//third_party:googletest.BUILD",
+    sha256 = "1f357c27ca988c3f7c6b4bf68a9395005ac6761f034046e9dde0896e3aba00e4",
+    strip_prefix = "googletest-1.14.0",
+    urls = [
+        "https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip",
+    ],
+)
+
+# nlohmann/json for CMake (avoids FetchContent network during cmake configure).
+http_archive(
+    name = "nlohmann_json_src",
+    build_file = "//third_party:nlohmann_json.BUILD",
+    sha256 = "d6c65aca6b1ed68e7a182f4757257b107ae403032760ed6ef121c9d55e81757d",
+    strip_prefix = "json",
+    urls = [
+        "https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz",
+    ],
+)

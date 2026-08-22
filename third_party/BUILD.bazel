@@ -1,0 +1,6 @@
+"""BUILD overlays for Native-owned http_archives (see MODULE.bazel)."""
+
+exports_files([
+    "googletest.BUILD",
+    "nlohmann_json.BUILD",
+])
