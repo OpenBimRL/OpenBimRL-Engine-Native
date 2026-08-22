@@ -125,14 +125,16 @@ cmake --build build -j --target OpenBIMRL_Native_UnitTest OpenBIMRL_Native_Test
 ctest --test-dir build --output-on-failure
 ```
 
-IFC integration tests need fixtures under `test/integration/resources/`. They are
-not Bazel targets and are **not** run in native GitHub Actions.
+IFC integration tests need fixtures under `test/integration/resources/`. On CI
+they run in [`release.yml`](.github/workflows/release.yml) as `test-integration`
+(after `build-llvm`, reusing the shared IfcOpenShell prefix).
 
 ## Releases
 
 [`.github/workflows/release.yml`](.github/workflows/release.yml) publishes
 versioned `.so` assets to a GitHub Release on push to `main` (and
-`workflow_dispatch`).
+`workflow_dispatch`). The `test-integration` job (CMake IFC gtests) must pass
+before the release job runs.
 
 **Version scheme:** UTC calendar date **`YYYY.MM.DD`** (dots). Git tag: `vYYYY.MM.DD`.
 
@@ -222,7 +224,7 @@ declare it in `openbimrl_c_api.h`, and list the source in `CMakeLists.txt`
 |------|---------|
 | [`BUILD.bazel`](BUILD.bazel) | `openbimrl_native` cmake target, unit tests, offload configs |
 | [`MODULE.bazel`](MODULE.bazel) | Bzlmod deps (`rules_foreign_cc`, googletest, nlohmann/json) |
-| [`.bazelrc`](.bazelrc) | Host clang pins; `rocm_offload` / `cuda_offload` |
+| [`.bazelrc`](.bazelrc) | `rocm_offload` / `cuda_offload` compiler env |
 | [`CMakeLists.txt`](CMakeLists.txt) | Library + optional gtests / offload flags |
-| [`.github/workflows/bazel-test.yml`](.github/workflows/bazel-test.yml) | Fast unit-test CI |
-| [`.github/workflows/release.yml`](.github/workflows/release.yml) | llvm / rocm / nvcc `.so` releases |
+| [`.github/workflows/bazel-test.yml`](.github/workflows/bazel-test.yml) | Fast pathfinding unit-test CI |
+| [`.github/workflows/release.yml`](.github/workflows/release.yml) | llvm / rocm / nvcc `.so` releases + IFC integration tests |

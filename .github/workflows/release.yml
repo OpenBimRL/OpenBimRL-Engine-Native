@@ -11,6 +11,9 @@
 # install matching OCCT/dev packages from apt; only the IfcOpenShell compile
 # is skipped. Stick to the ubuntu 24.04 family so glibc/libstdc++ match.
 #
+# After build-llvm, test-integration builds/runs CMake IFC gtests
+# (test/integration) against the same IfcOpenShell prefix; release waits on it.
+#
 # In-jar Engine resource stays unversioned libOpenBimRL-Engine-Native-x86_64.so.
 name: Release native shared libraries
 
@@ -187,6 +190,71 @@ jobs:
           path: dist/*.so
           if-no-files-found: error
 
+  # IFC integration gtests (test/integration) — CMake + prebuilt IfcOpenShell.
+  # Anchored after build-llvm so the llvm .so path is proven first; reuses the
+  # shared ifcopenshell-prefix artifact (no second IfcOpenShell compile).
+  test-integration:
+    needs: [build-llvm, build-ifcopenshell]
+    runs-on: ubuntu-24.04
+    env:
+      CC: /usr/bin/clang
+      CXX: /usr/bin/clang++
+      OPENBIMRL_USE_PREBUILT_IFCOPENSHELL: "ON"
+      OPENBIMRL_IFCOPENSHELL_PREFIX: /opt/ifcopenshell
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install apt dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang libomp-dev libomp5 \
+            libboost-all-dev \
+            xfonts-scalable \
+            libocct-data-exchange-dev libocct-draw-dev libocct-foundation-dev \
+            libocct-modeling-algorithms-dev libocct-modeling-data-dev \
+            libocct-ocaf-dev libocct-visualization-dev \
+            libmpfr-dev libhdf5-dev libgmp-dev libxml2-dev libeigen3-dev \
+            cmake ninja-build make \
+            libgl1-mesa-dev libx11-dev libxext-dev libxi-dev libxmu-dev libxt-dev \
+            libtbb-dev tcl-dev tk-dev occt-misc
+          clang++ --version
+
+      - name: Download IfcOpenShell prefix
+        uses: actions/download-artifact@v4
+        with:
+          name: ifcopenshell-prefix
+          path: .
+
+      - name: Install IfcOpenShell prefix
+        run: |
+          set -euo pipefail
+          sudo mkdir -p /opt
+          sudo rm -rf /opt/ifcopenshell
+          sudo tar -C /opt -xzf ifcopenshell-prefix.tar.gz
+          test -d /opt/ifcopenshell/include
+          test -d /opt/ifcopenshell/lib
+
+      - name: CMake configure (integration tests)
+        run: |
+          cmake -G Ninja -S . -B build-integration \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER="${CC}" \
+            -DCMAKE_CXX_COMPILER="${CXX}" \
+            -DOPENBIMRL_USE_PREBUILT_IFCOPENSHELL=ON \
+            -DOPENBIMRL_IFCOPENSHELL_PREFIX=/opt/ifcopenshell \
+            -DOPENBIMRL_BUILD_NATIVE_TESTS=ON
+
+      - name: Build OpenBIMRL_Native_Test
+        run: cmake --build build-integration -j"$(nproc)" --target OpenBIMRL_Native_Test
+
+      - name: Run IFC integration tests
+        run: |
+          export LD_LIBRARY_PATH="/opt/ifcopenshell/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+          # Run the gtest binary directly (gtest_discover_tests names are TEST() ids,
+          # not the executable name, so -R OpenBIMRL_Native_Test would match nothing).
+          ./build-integration/OpenBIMRL_Native_Test
+
   build-rocm:
     needs: [version, build-ifcopenshell]
     runs-on: ubuntu-24.04
@@ -349,7 +417,7 @@ jobs:
           if-no-files-found: error
 
   release:
-    needs: [version, build-llvm, build-rocm, build-nvcc]
+    needs: [version, build-llvm, build-rocm, build-nvcc, test-integration]
     runs-on: ubuntu-24.04
     steps:
       - name: Download build artifacts
