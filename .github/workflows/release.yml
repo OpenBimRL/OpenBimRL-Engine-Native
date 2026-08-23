@@ -38,6 +38,7 @@ env:
   OPENBIMRL_USE_PREBUILT_IFCOPENSHELL: "ON"
   OPENBIMRL_IFCOPENSHELL_PREFIX: /opt/ifcopenshell
   CUDA_HOME: /usr/local/cuda
+  BAZELISK_VERSION: 1.29.0
 
 jobs:
   version:
@@ -292,6 +293,8 @@ jobs:
       - name: Install Bazelisk
         uses: bazel-contrib/setup-bazel@0.19.0
         with:
+          # Job container images lack the pre-installed Bazelisk on ubuntu-24.04 runners.
+          bazelisk-version: ${{ env.BAZELISK_VERSION }}
           bazelisk-cache: true
           disk-cache: true
           repository-cache: true
@@ -375,6 +378,8 @@ jobs:
       - name: Install Bazelisk
         uses: bazel-contrib/setup-bazel@0.19.0
         with:
+          # Job container images lack the pre-installed Bazelisk on ubuntu-24.04 runners.
+          bazelisk-version: ${{ env.BAZELISK_VERSION }}
           bazelisk-cache: true
           disk-cache: true
           repository-cache: true

@@ -319,12 +319,21 @@ install(TARGETS OpenBIMRL_Native
 install(FILES include/openbimrl_c_api.h DESTINATION include)
 
 if(OPENBIMRL_BUILD_NATIVE_TESTS)
+    # BUILD_SHARED_LIBS is ON for IfcOpenShell / OpenBIMRL_Native. FetchContent
+    # inherits that, so googletest would build libgtest*.so and the test binary
+    # would fail at runtime unless those dirs are on LD_LIBRARY_PATH. Keep gtest
+    # static so it is linked into the executables.
+    set(_openbimrl_saved_build_shared_libs "${BUILD_SHARED_LIBS}")
+    set(BUILD_SHARED_LIBS OFF)
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
     FetchContent_Declare(
             googletest
             URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
     )
     FetchContent_MakeAvailable(googletest)
-    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    set(BUILD_SHARED_LIBS "${_openbimrl_saved_build_shared_libs}")
+    unset(_openbimrl_saved_build_shared_libs)
     enable_testing()
 
     add_executable(OpenBIMRL_Native_UnitTest
