@@ -115,7 +115,7 @@ jobs:
           tar -C /opt -czf ifcopenshell-prefix.tar.gz ifcopenshell
           ls -lh ifcopenshell-prefix.tar.gz
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ifcopenshell-prefix
           path: ifcopenshell-prefix.tar.gz
@@ -129,7 +129,7 @@ jobs:
       CC: /usr/bin/clang
       CXX: /usr/bin/clang++
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Install apt dependencies
         run: |
@@ -148,14 +148,14 @@ jobs:
           clang++ --version
 
       - name: Install Bazelisk
-        uses: bazel-contrib/setup-bazel@0.15.0
+        uses: bazel-contrib/setup-bazel@0.19.0
         with:
           bazelisk-cache: true
           disk-cache: true
           repository-cache: true
 
       - name: Download IfcOpenShell prefix
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ifcopenshell-prefix
           path: .
@@ -188,7 +188,7 @@ jobs:
           cp -f "${src}" "${dest}"
           ls -la "${dest}"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: native-so-llvm
           path: dist/*.so
@@ -206,7 +206,7 @@ jobs:
       OPENBIMRL_USE_PREBUILT_IFCOPENSHELL: "ON"
       OPENBIMRL_IFCOPENSHELL_PREFIX: /opt/ifcopenshell
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Install apt dependencies
         run: |
@@ -225,7 +225,7 @@ jobs:
           clang++ --version
 
       - name: Download IfcOpenShell prefix
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ifcopenshell-prefix
           path: .
@@ -271,7 +271,7 @@ jobs:
       image: rocm/dev-ubuntu-24.04:7.1.1
       options: --user root
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Install apt dependencies
         run: |
@@ -290,14 +290,14 @@ jobs:
           /opt/rocm/llvm/bin/clang++ --version
 
       - name: Install Bazelisk
-        uses: bazel-contrib/setup-bazel@0.15.0
+        uses: bazel-contrib/setup-bazel@0.19.0
         with:
           bazelisk-cache: true
           disk-cache: true
           repository-cache: true
 
       - name: Download IfcOpenShell prefix
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ifcopenshell-prefix
           path: .
@@ -332,7 +332,7 @@ jobs:
           cp -f "${src}" "${dest}"
           ls -la "${dest}"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: native-so-rocm
           path: dist/*.so
@@ -352,7 +352,7 @@ jobs:
       image: nvidia/cuda:12.6.3-devel-ubuntu24.04
       options: --user root
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Install apt dependencies
         run: |
@@ -373,14 +373,14 @@ jobs:
           nvcc --version
 
       - name: Install Bazelisk
-        uses: bazel-contrib/setup-bazel@0.15.0
+        uses: bazel-contrib/setup-bazel@0.19.0
         with:
           bazelisk-cache: true
           disk-cache: true
           repository-cache: true
 
       - name: Download IfcOpenShell prefix
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ifcopenshell-prefix
           path: .
@@ -416,7 +416,7 @@ jobs:
           cp -f "${src}" "${dest}"
           ls -la "${dest}"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: native-so-nvcc
           path: dist/*.so
@@ -427,7 +427,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: native-so-*
           path: dist
@@ -437,7 +437,7 @@ jobs:
         run: ls -la dist/
 
       - name: Create or update GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.version.outputs.tag }}
           name: Native ${{ needs.version.outputs.value }}
