@@ -29,6 +29,10 @@ concurrency:
 permissions:
   contents: write
 
+defaults:
+  run:
+    shell: bash
+
 env:
   IFCOPENSHELL_GIT_TAG: eafa158ca0cd5ba2ca22b5e588b0375cab2efbce
   OPENBIMRL_USE_PREBUILT_IFCOPENSHELL: "ON"

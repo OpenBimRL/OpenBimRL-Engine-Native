@@ -137,14 +137,10 @@ cmake(
         ":rocm_offload_enabled": {
             "CC": "/opt/rocm/llvm/bin/clang",
             "CXX": "/opt/rocm/llvm/bin/clang++",
-            # Inherited from client env via .bazelrc --action_env=OPENBIMRL_ROCM_OFFLOAD_ARCH
-            "OPENBIMRL_ROCM_OFFLOAD_ARCH": "$(OPENBIMRL_ROCM_OFFLOAD_ARCH)",
         },
         ":cuda_offload_enabled": {
             "CC": "/usr/bin/clang",
             "CXX": "/usr/bin/clang++",
-            "CUDA_HOME": "$(CUDA_HOME)",
-            "OPENBIMRL_CUDA_OFFLOAD_ARCH": "$(OPENBIMRL_CUDA_OFFLOAD_ARCH)",
         },
         "//conditions:default": {
             "CC": "/usr/bin/clang",
