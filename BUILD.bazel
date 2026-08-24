@@ -107,6 +107,7 @@ cmake(
             "OPENBIMRL_IFCOPENSHELL_PREFIX": "/opt/ifcopenshell",
             "OPENBIMRL_JSON_SOURCE_DIR": "$(execpath @nlohmann_json_src//:CMakeLists.txt)",
             "OPENBIMRL_USE_PREBUILT_IFCOPENSHELL": "ON",
+            "OPENBIMRL_STATIC_LIBSTDCXX": "ON",
         },
         ":cuda_offload_enabled": {
             "BUILD_SHARED_LIBS": "ON",
@@ -119,6 +120,7 @@ cmake(
             "OPENBIMRL_IFCOPENSHELL_PREFIX": "/opt/ifcopenshell",
             "OPENBIMRL_JSON_SOURCE_DIR": "$(execpath @nlohmann_json_src//:CMakeLists.txt)",
             "OPENBIMRL_USE_PREBUILT_IFCOPENSHELL": "ON",
+            "OPENBIMRL_STATIC_LIBSTDCXX": "ON",
         },
         "//conditions:default": {
             "BUILD_SHARED_LIBS": "ON",
@@ -131,6 +133,7 @@ cmake(
             "OPENBIMRL_IFCOPENSHELL_PREFIX": "/opt/ifcopenshell",
             "OPENBIMRL_JSON_SOURCE_DIR": "$(execpath @nlohmann_json_src//:CMakeLists.txt)",
             "OPENBIMRL_USE_PREBUILT_IFCOPENSHELL": "ON",
+            "OPENBIMRL_STATIC_LIBSTDCXX": "ON",
         },
     }),
     env = select({

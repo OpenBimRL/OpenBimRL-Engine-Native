@@ -305,6 +305,19 @@ target_link_libraries(openbimrl_core PUBLIC
 add_library(OpenBIMRL_Native SHARED ${OPENBIMRL_FFI_SOURCES})
 set_property(TARGET OpenBIMRL_Native PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(OpenBIMRL_Native PUBLIC openbimrl_core)
+
+# Embed C++ runtime in the JNA .so so published jars run on hosts with an older
+# libstdc++ (e.g. Debian bookworm vs Ubuntu noble CI). OCCT / IfcOpenShell stay
+# dynamic (LD_LIBRARY_PATH / Engine runtime image).
+option(OPENBIMRL_STATIC_LIBSTDCXX
+       "Link libstdc++ and libgcc statically into OpenBIMRL_Native"
+       ON)
+if(OPENBIMRL_STATIC_LIBSTDCXX)
+    target_link_options(OpenBIMRL_Native PRIVATE
+        -static-libstdc++
+        -static-libgcc)
+endif()
+
 if(OPENBIMRL_STATIC_IFCOPENSHELL)
     # Keep IfcOpenShell symbols inside the JNI/JNA shared object when possible.
     set_target_properties(OpenBIMRL_Native PROPERTIES
