@@ -15,7 +15,16 @@ module(
 
 bazel_dep(name = "rules_foreign_cc", version = "0.15.1")
 bazel_dep(name = "rules_cc", version = "0.2.17")
+bazel_dep(name = "rules_java", version = "9.3.0")
 bazel_dep(name = "platforms", version = "1.0.0")
+
+# jni-bind pulls JNI headers from local_jdk via @jni-bind//:jni_bind → :jni_dep.
+java_toolchains = use_extension("@rules_java//java:extensions.bzl", "toolchains")
+use_repo(java_toolchains, "local_jdk")
+register_toolchains(
+    "@local_jdk//:runtime_toolchain_definition",
+    "@local_jdk//:bootstrap_runtime_toolchain_definition",
+)
 
 # Prefer host cmake/ninja/make/pkg-config over foreign_cc built-from-source
 # toolchains (those bootstrap with Bazel's CC; Engine/native .bazelrc pin
@@ -49,5 +58,34 @@ http_archive(
     strip_prefix = "json",
     urls = [
         "https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz",
+    ],
+)
+
+# Official jni-bind (Release-1.5.1). Depend on @jni-bind//:jni_bind and
+# #include "jni_bind.h" — not the flattened jni_bind_release.h vendored header.
+http_archive(
+    name = "jni-bind",
+    patch_cmds = [
+        # Expose jni_bind.h for $(execpath) and full tree for rules_foreign_cc.
+        """cat >> BUILD <<'EOF'
+
+exports_files(["jni_bind.h"])
+
+filegroup(
+    name = "all_srcs",
+    srcs = glob(
+        ["**"],
+        exclude = [
+            ".git/**",
+        ],
+    ),
+    visibility = ["//visibility:public"],
+)
+EOF""",
+    ],
+    sha256 = "35d30d8dd5eede097f76973bd0e48acc766565cefe62b00e711053a577d31a0c",
+    strip_prefix = "jni-bind-Release-1.5.1",
+    urls = [
+        "https://github.com/google/jni-bind/archive/refs/tags/Release-1.5.1.zip",
     ],
 )

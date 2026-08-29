@@ -17,6 +17,7 @@ filegroup(
             "**/*.hpp",
             "CMakeLists.txt",
             "cmake/**/*.cmake",
+            "cmake/**/*.in",
         ],
         exclude = [
             ".git/**",
@@ -78,13 +79,42 @@ config_setting(
     define_values = {"OPENBIMRL_ENABLE_CUDA_OFFLOAD": "ON"},
 )
 
-# Shared library for JNA (Engine packages as libOpenBimRL-Engine-Native-x86_64.so).
+# RelWithDebInfo native .so for combined JVM + LLDB/GDB debugging (--config=native_dbg).
+config_setting(
+    name = "native_debug",
+    define_values = {"OPENBIMRL_NATIVE_DEBUG": "ON"},
+)
+
+config_setting(
+    name = "native_debug_rocm",
+    define_values = {
+        "OPENBIMRL_NATIVE_DEBUG": "ON",
+        "OPENBIMRL_ENABLE_ROCM_OFFLOAD": "ON",
+    },
+)
+
+config_setting(
+    name = "native_debug_cuda",
+    define_values = {
+        "OPENBIMRL_NATIVE_DEBUG": "ON",
+        "OPENBIMRL_ENABLE_CUDA_OFFLOAD": "ON",
+    },
+)
+
+# ---------------------------------------------------------------------------
+# JNI / jni-bind (Track B) — Bazel cc_library dep on @jni-bind//:jni_bind.
+# Native .so is still built via cmake; OPENBIMRL_JNI_BIND_HEADER points at
+# jni_bind.h from the http_archive tree (build_data :all_srcs).
+# ---------------------------------------------------------------------------
+
+cc_library(
+    name = "openbimrl_jni_jnibind",
+    deps = ["@jni-bind//:jni_bind"],
+)
+
+# Shared library for JNI (Engine packages as libopenbimrl_jni.so).
 #
 # Default: system LLVM clang + libomp (.bazelrc pins /usr/bin/clang).
-# Dev images at repo root: llvm.dockerfile / rocm.dockerfile / nvcc.dockerfile
-# (point .devcontainer/devcontainer.json at the one you want).
-# ROCm offload: ROCm LLVM at /opt/rocm/llvm.
-# CUDA offload (WIP): host clang + CUDA toolkit (nvcc) for device hooks.
 cmake(
     name = "openbimrl_native",
     build_args = [
@@ -92,10 +122,58 @@ cmake(
         "--parallel",
     ],
     build_data = [
+        ":openbimrl_jni_jnibind",
+        "@jni-bind//:all_srcs",
+        "@jni-bind//:jni_bind.h",
         "@nlohmann_json_src//:CMakeLists.txt",
         "@nlohmann_json_src//:all_srcs",
     ],
     cache_entries = select({
+        ":native_debug_rocm": {
+            "BUILD_SHARED_LIBS": "ON",
+            "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+            "CMAKE_C_COMPILER": "/opt/rocm/llvm/bin/clang",
+            "CMAKE_CXX_COMPILER": "/opt/rocm/llvm/bin/clang++",
+            "OPENBIMRL_BUILD_NATIVE_TESTS": "OFF",
+            "OPENBIMRL_ENABLE_ROCM_OFFLOAD": "ON",
+            "OPENBIMRL_ENABLE_CUDA_OFFLOAD": "OFF",
+            "OPENBIMRL_ENGINE_VERSION": "$(OPENBIMRL_ENGINE_VERSION)",
+            "OPENBIMRL_IFCOPENSHELL_PREFIX": "/opt/ifcopenshell",
+            "OPENBIMRL_JNI_BIND_HEADER": "$(execpath @jni-bind//:jni_bind.h)",
+            "OPENBIMRL_JSON_SOURCE_DIR": "$(execpath @nlohmann_json_src//:CMakeLists.txt)",
+            "OPENBIMRL_USE_PREBUILT_IFCOPENSHELL": "ON",
+            "OPENBIMRL_STATIC_LIBSTDCXX": "ON",
+        },
+        ":native_debug_cuda": {
+            "BUILD_SHARED_LIBS": "ON",
+            "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+            "CMAKE_C_COMPILER": "/usr/bin/clang",
+            "CMAKE_CXX_COMPILER": "/usr/bin/clang++",
+            "OPENBIMRL_BUILD_NATIVE_TESTS": "OFF",
+            "OPENBIMRL_ENABLE_ROCM_OFFLOAD": "OFF",
+            "OPENBIMRL_ENABLE_CUDA_OFFLOAD": "ON",
+            "OPENBIMRL_ENGINE_VERSION": "$(OPENBIMRL_ENGINE_VERSION)",
+            "OPENBIMRL_IFCOPENSHELL_PREFIX": "/opt/ifcopenshell",
+            "OPENBIMRL_JNI_BIND_HEADER": "$(execpath @jni-bind//:jni_bind.h)",
+            "OPENBIMRL_JSON_SOURCE_DIR": "$(execpath @nlohmann_json_src//:CMakeLists.txt)",
+            "OPENBIMRL_USE_PREBUILT_IFCOPENSHELL": "ON",
+            "OPENBIMRL_STATIC_LIBSTDCXX": "ON",
+        },
+        ":native_debug": {
+            "BUILD_SHARED_LIBS": "ON",
+            "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+            "CMAKE_C_COMPILER": "/usr/bin/clang",
+            "CMAKE_CXX_COMPILER": "/usr/bin/clang++",
+            "OPENBIMRL_BUILD_NATIVE_TESTS": "OFF",
+            "OPENBIMRL_ENABLE_ROCM_OFFLOAD": "OFF",
+            "OPENBIMRL_ENABLE_CUDA_OFFLOAD": "OFF",
+            "OPENBIMRL_ENGINE_VERSION": "$(OPENBIMRL_ENGINE_VERSION)",
+            "OPENBIMRL_IFCOPENSHELL_PREFIX": "/opt/ifcopenshell",
+            "OPENBIMRL_JNI_BIND_HEADER": "$(execpath @jni-bind//:jni_bind.h)",
+            "OPENBIMRL_JSON_SOURCE_DIR": "$(execpath @nlohmann_json_src//:CMakeLists.txt)",
+            "OPENBIMRL_USE_PREBUILT_IFCOPENSHELL": "ON",
+            "OPENBIMRL_STATIC_LIBSTDCXX": "ON",
+        },
         ":rocm_offload_enabled": {
             "BUILD_SHARED_LIBS": "ON",
             "CMAKE_BUILD_TYPE": "Release",
@@ -104,7 +182,9 @@ cmake(
             "OPENBIMRL_BUILD_NATIVE_TESTS": "OFF",
             "OPENBIMRL_ENABLE_ROCM_OFFLOAD": "ON",
             "OPENBIMRL_ENABLE_CUDA_OFFLOAD": "OFF",
+            "OPENBIMRL_ENGINE_VERSION": "$(OPENBIMRL_ENGINE_VERSION)",
             "OPENBIMRL_IFCOPENSHELL_PREFIX": "/opt/ifcopenshell",
+            "OPENBIMRL_JNI_BIND_HEADER": "$(execpath @jni-bind//:jni_bind.h)",
             "OPENBIMRL_JSON_SOURCE_DIR": "$(execpath @nlohmann_json_src//:CMakeLists.txt)",
             "OPENBIMRL_USE_PREBUILT_IFCOPENSHELL": "ON",
             "OPENBIMRL_STATIC_LIBSTDCXX": "ON",
@@ -117,7 +197,9 @@ cmake(
             "OPENBIMRL_BUILD_NATIVE_TESTS": "OFF",
             "OPENBIMRL_ENABLE_ROCM_OFFLOAD": "OFF",
             "OPENBIMRL_ENABLE_CUDA_OFFLOAD": "ON",
+            "OPENBIMRL_ENGINE_VERSION": "$(OPENBIMRL_ENGINE_VERSION)",
             "OPENBIMRL_IFCOPENSHELL_PREFIX": "/opt/ifcopenshell",
+            "OPENBIMRL_JNI_BIND_HEADER": "$(execpath @jni-bind//:jni_bind.h)",
             "OPENBIMRL_JSON_SOURCE_DIR": "$(execpath @nlohmann_json_src//:CMakeLists.txt)",
             "OPENBIMRL_USE_PREBUILT_IFCOPENSHELL": "ON",
             "OPENBIMRL_STATIC_LIBSTDCXX": "ON",
@@ -130,7 +212,9 @@ cmake(
             "OPENBIMRL_BUILD_NATIVE_TESTS": "OFF",
             "OPENBIMRL_ENABLE_ROCM_OFFLOAD": "OFF",
             "OPENBIMRL_ENABLE_CUDA_OFFLOAD": "OFF",
+            "OPENBIMRL_ENGINE_VERSION": "$(OPENBIMRL_ENGINE_VERSION)",
             "OPENBIMRL_IFCOPENSHELL_PREFIX": "/opt/ifcopenshell",
+            "OPENBIMRL_JNI_BIND_HEADER": "$(execpath @jni-bind//:jni_bind.h)",
             "OPENBIMRL_JSON_SOURCE_DIR": "$(execpath @nlohmann_json_src//:CMakeLists.txt)",
             "OPENBIMRL_USE_PREBUILT_IFCOPENSHELL": "ON",
             "OPENBIMRL_STATIC_LIBSTDCXX": "ON",
@@ -156,13 +240,13 @@ cmake(
     generate_crosstool_file = False,
     lib_source = ":cmake_srcs",
     out_include_dir = "include",
-    out_shared_libs = ["libOpenBIMRL_Native.so"],
+    out_shared_libs = ["libopenbimrl_jni.so"],
     tags = [
         "no-remote",
         "no-sandbox",
     ],
     targets = [
-        "OpenBIMRL_Native",
+        "openbimrl_jni",
         "install",
     ],
 )

@@ -15,11 +15,15 @@ build/
 
 # Bazel (standalone module root)
 /bazel-*
+/build-*/
 
 # IDE stuff
 .idea
 .vscode
 
-# Ignore non-fixture junk under resources; keep IFC files for CI.
+# Ignore non-fixture junk under resources; keep small IFC files for CI.
 /test/integration/resources/*
 !/test/integration/resources/*.ifc
+# Large local-only regression fixtures (copy from src/test/resources).
+/test/integration/resources/2024-10-25_IC6_ASR_Journal_Paper.ifc
+/test/integration/resources/300_IB_BW_EUE*

@@ -29,8 +29,7 @@ std::unique_ptr<IfcGeom::Iterator> iteratorForEntity(
 std::optional<Bounds3d> boundsOf(const Model::IfcSession& session,
                                  Model::IfcEntityRef entity);
 
-std::optional<Bounds3d> buildingBounds(const Model::IfcSession& session,
-                                       int numThreads);
+std::optional<Bounds3d> buildingBounds(const Model::IfcSession& session);
 
 /** XY footprint triangle vertices (x,y pairs flattened). */
 std::vector<double> footprintPolygonXY(const Model::IfcSession& session,

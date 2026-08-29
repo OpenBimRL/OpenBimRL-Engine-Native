@@ -268,10 +268,34 @@ set(OPENBIMRL_CORE_SOURCES
         src/pathfinding/edge_costs.cpp
 )
 
+set(OPENBIMRL_JNI_SOURCES
+        src/jni/jni_onload.cpp
+        src/jni/native_engine.cpp
+        src/jni/build_info.cpp
+)
+
+# Version / build metadata baked into libopenbimrl_jni (JNI libInfo / REST /status).
+set(OPENBIMRL_ENGINE_VERSION "" CACHE STRING
+    "Engine release version (Bazel --define OPENBIMRL_ENGINE_VERSION=…)")
+if(OPENBIMRL_ENGINE_VERSION STREQUAL "")
+    if(DEFINED ENV{OPENBIMRL_ENGINE_VERSION} AND NOT "$ENV{OPENBIMRL_ENGINE_VERSION}" STREQUAL "")
+        set(OPENBIMRL_ENGINE_VERSION "$ENV{OPENBIMRL_ENGINE_VERSION}")
+    else()
+        set(OPENBIMRL_ENGINE_VERSION "dev")
+    endif()
+endif()
+string(TIMESTAMP OPENBIMRL_NATIVE_BUILD_DATE UTC "%Y-%m-%dT%H:%M:%SZ")
+set(OPENBIMRL_NATIVE_BUILD_COMPILER
+    "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION} (${CMAKE_CXX_COMPILER})")
+set(OPENBIMRL_NATIVE_VERSION "${OPENBIMRL_ENGINE_VERSION}")
+
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/build_config.hpp.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/generated/openbimrl/build_config.hpp"
+    @ONLY)
+
 set(OPENBIMRL_FFI_SOURCES
-        src/ffi/rule_context.cpp
-        src/ffi/session_and_init.cpp
-        src/ffi/ops.cpp
+        src/ffi/session_init.cpp
 )
 
 add_library(openbimrl_core STATIC ${OPENBIMRL_CORE_SOURCES})
@@ -302,30 +326,78 @@ target_link_libraries(openbimrl_core PUBLIC
         Eigen3::Eigen
         OpenMP::OpenMP_CXX)
 
-add_library(OpenBIMRL_Native SHARED ${OPENBIMRL_FFI_SOURCES})
-set_property(TARGET OpenBIMRL_Native PROPERTY POSITION_INDEPENDENT_CODE ON)
-target_link_libraries(OpenBIMRL_Native PUBLIC openbimrl_core)
+if(DEFINED ENV{JAVA_HOME})
+    set(_openbimrl_java_home "$ENV{JAVA_HOME}")
+else()
+    set(_openbimrl_java_home "/opt/jetbrains-jbr")
+endif()
 
-# Embed C++ runtime in the JNA .so so published jars run on hosts with an older
-# libstdc++ (e.g. Debian bookworm vs Ubuntu noble CI). OCCT / IfcOpenShell stay
-# dynamic (LD_LIBRARY_PATH / Engine runtime image).
+# Bazel passes OPENBIMRL_JNI_BIND_HEADER (execpath to jni_bind.h from http_archive
+# @jni-bind). Standalone CMake uses FetchContent for the same Release-1.5.1 tag.
+set(OPENBIMRL_JNI_BIND_HEADER "" CACHE FILEPATH "Path to jni_bind.h (Bazel execpath)")
+set(OPENBIMRL_JNI_BIND_ROOT "" CACHE PATH
+    "jni-bind source root (contains jni_bind.h); empty uses FetchContent URL")
+if(OPENBIMRL_JNI_BIND_HEADER)
+    get_filename_component(OPENBIMRL_JNI_BIND_ROOT "${OPENBIMRL_JNI_BIND_HEADER}" DIRECTORY)
+elseif(OPENBIMRL_JNI_BIND_ROOT)
+    if(NOT EXISTS "${OPENBIMRL_JNI_BIND_ROOT}/jni_bind.h")
+        message(FATAL_ERROR
+            "OPENBIMRL_JNI_BIND_ROOT must contain jni_bind.h, got: ${OPENBIMRL_JNI_BIND_ROOT}")
+    endif()
+else()
+    FetchContent_Declare(
+        jni_bind
+        URL https://github.com/google/jni-bind/archive/refs/tags/Release-1.5.1.zip
+        URL_HASH SHA256=35d30d8dd5eede097f76973bd0e48acc766565cefe62b00e711053a577d31a0c
+    )
+    FetchContent_MakeAvailable(jni_bind)
+    set(OPENBIMRL_JNI_BIND_ROOT "${jni_bind_SOURCE_DIR}")
+endif()
+
+set(OPENBIMRL_JNI_INCLUDE_DIRS
+    "${_openbimrl_java_home}/include"
+    "${_openbimrl_java_home}/include/linux"
+    "${OPENBIMRL_JNI_BIND_ROOT}")
+
+add_library(openbimrl_jni SHARED ${OPENBIMRL_JNI_SOURCES} ${OPENBIMRL_FFI_SOURCES})
+set_property(TARGET openbimrl_jni PROPERTY POSITION_INDEPENDENT_CODE ON)
+target_include_directories(openbimrl_jni PRIVATE
+    ${OPENBIMRL_JNI_INCLUDE_DIRS}
+    "${CMAKE_CURRENT_BINARY_DIR}/generated")
+target_link_libraries(openbimrl_jni PUBLIC openbimrl_core)
+
+# Bake GPU offload settings into the JNI library for /status and diagnostics.
+if(OPENBIMRL_ENABLE_ROCM_OFFLOAD)
+    target_compile_definitions(openbimrl_jni PRIVATE
+        OPENBIMRL_COMPILED_ROCM_OFFLOAD=1
+        "OPENBIMRL_COMPILED_GPU_OFFLOAD_ARCH=\"${OPENBIMRL_ROCM_OFFLOAD_ARCH}\"")
+elseif(OPENBIMRL_ENABLE_CUDA_OFFLOAD)
+    target_compile_definitions(openbimrl_jni PRIVATE
+        OPENBIMRL_COMPILED_CUDA_OFFLOAD=1
+        "OPENBIMRL_COMPILED_GPU_OFFLOAD_ARCH=\"${OPENBIMRL_CUDA_OFFLOAD_ARCH}\"")
+else()
+    target_compile_definitions(openbimrl_jni PRIVATE
+        OPENBIMRL_COMPILED_ROCM_OFFLOAD=0
+        OPENBIMRL_COMPILED_CUDA_OFFLOAD=0
+        "OPENBIMRL_COMPILED_GPU_OFFLOAD_ARCH=\"\"")
+endif()
+
+# Embed C++ runtime so published jars run on hosts with an older libstdc++.
 option(OPENBIMRL_STATIC_LIBSTDCXX
-       "Link libstdc++ and libgcc statically into OpenBIMRL_Native"
+       "Link libstdc++ and libgcc statically into openbimrl_jni"
        ON)
 if(OPENBIMRL_STATIC_LIBSTDCXX)
-    target_link_options(OpenBIMRL_Native PRIVATE
+    target_link_options(openbimrl_jni PRIVATE
         -static-libstdc++
         -static-libgcc)
 endif()
 
 if(OPENBIMRL_STATIC_IFCOPENSHELL)
-    # Keep IfcOpenShell symbols inside the JNI/JNA shared object when possible.
-    set_target_properties(OpenBIMRL_Native PROPERTIES
+    set_target_properties(openbimrl_jni PROPERTIES
         LINK_FLAGS "-Wl,--exclude-libs,ALL")
 endif()
 
-# rules_foreign_cc (and plain cmake --install) package the JNA shared library + C ABI header.
-install(TARGETS OpenBIMRL_Native
+install(TARGETS openbimrl_jni
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib
         RUNTIME DESTINATION bin)
@@ -359,16 +431,11 @@ if(OPENBIMRL_BUILD_NATIVE_TESTS)
     add_definitions(-DRESOURCES_DIR="${CMAKE_SOURCE_DIR}/test/integration/resources")
     add_executable(OpenBIMRL_Native_Test
             test/integration/test.cpp
-            test/integration/ifc_elements.h)
+            test/integration/bounding_box_regression_test.cpp
+            test/integration/ifc_elements.h
+            src/ffi/session_init.cpp)
     target_link_libraries(OpenBIMRL_Native_Test PRIVATE
-            OpenBIMRL_Native GTest::gtest_main)
-    # gtest_discover_tests (POST_BUILD) execs the binary at build time; the
-    # loader must find libOpenBIMRL_Native.so in the build dir (same place as
-    # the test). PRE_TEST defers discovery to ctest; BUILD_RPATH covers both.
-    set_target_properties(OpenBIMRL_Native_Test PROPERTIES
-            BUILD_RPATH "${CMAKE_BINARY_DIR}"
-            BUILD_RPATH_USE_ORIGIN TRUE
-            INSTALL_RPATH "$ORIGIN")
+            openbimrl_core GTest::gtest_main)
     gtest_discover_tests(OpenBIMRL_Native_Test
             DISCOVERY_MODE PRE_TEST
             PROPERTIES

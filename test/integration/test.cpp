@@ -6,19 +6,28 @@
 
 #include "ifc_elements.h"
 #include "openbimrl/compat.hpp"
-#include "openbimrl/ffi/rule_context.hpp"
+#include "openbimrl/geometry/service.hpp"
+#include "openbimrl/geometry/types.hpp"
+#include "openbimrl/model/session.hpp"
+#include "openbimrl/properties/data.hpp"
 #include "openbimrl_c_api.h"
 
 namespace {
+
+using OpenBimRL::Native::Geometry::boundsOf;
+using OpenBimRL::Native::Geometry::buildingBounds;
+using OpenBimRL::Native::Geometry::ElementFrame;
+using OpenBimRL::Native::Geometry::extractFrame;
+using OpenBimRL::Native::Geometry::footprintPolygonXY;
+using OpenBimRL::Native::Model::ActiveSession;
+using OpenBimRL::Native::Model::IfcEntityRef;
+using OpenBimRL::Native::Properties::snapshot;
+using OpenBimRL::Native::Properties::toJson;
 
 bool loadTestIfc(const std::string& fileName) {
     OpenBimRL::Engine::Utils::setSilent(true);
     return initIfc(
         std::filesystem::path(RESOURCES_DIR).append(fileName).c_str());
-}
-
-OpenBimRL::Native::Ffi::RuleContext& ctx() {
-    return OpenBimRL::Native::Ffi::RuleContext::current();
 }
 
 }  // namespace
@@ -61,133 +70,61 @@ TEST(IFC4X3, FilterIfcRail) {
 
 TEST(Functions, FilterByGUID) {
     ASSERT_TRUE(loadTestIfc("correct.ifc"));
+    auto* session = ActiveSession::get();
+    ASSERT_NE(session, nullptr);
 
     const auto guid = "3bnVDGnRyHxfLHBF1T2vCN";
-    const auto getGUID = [=](uint32_t) { return guid; };
-    const auto setPointer = [=](uint32_t index, void* result) {
-        if (index != 0) FAIL() << "filterByGUID returned nothing on output 0";
-        if (!result) FAIL() << "filterByGUID returned null pointer!";
-        try {
-            const auto ifcItem =
-                ((IfcUtil::IfcBaseClass*)(result))->as<Ifc4::IfcObject>(true);
-            const auto itemGUID = ifcItem->GlobalId();
-            EXPECT_EQ(itemGUID.compare(guid), 0)
-                << "GUIDs: [" + itemGUID + ", " + guid + "] do not match!";
-        } catch (IfcParse::IfcException& e) {
-            FAIL() << e.what();
-        }
-    };
-    ctx().getInputPointer = nullptr;
-    ctx().getInputDouble = nullptr;
-    ctx().getInputInt = nullptr;
-    ctx().getInputString = std::function(getGUID);
-    ctx().setOutputPointer = std::function(setPointer);
-    ctx().setOutputDouble = nullptr;
-    ctx().setOutputInt = nullptr;
-    ctx().setOutputString = nullptr;
-    ctx().setOutputArray = nullptr;
-
-    filterByGUID();
+    const auto entity = session->instanceByGuid(guid);
+    ASSERT_TRUE(entity);
+    const auto* asObject = static_cast<IfcUtil::IfcBaseClass*>(entity.ptr)
+                               ->as<Ifc4::IfcObject>(true);
+    ASSERT_NE(asObject, nullptr);
+    EXPECT_EQ(asObject->GlobalId(), guid);
 }
 
 TEST(Functions, FilterByElement) {
     ASSERT_TRUE(loadTestIfc("correct.ifc"));
+    auto* session = ActiveSession::get();
+    ASSERT_NE(session, nullptr);
 
     for (std::string_view ifc4ElementClass : ifc4ElementClasses) {
-        const auto getType = [=](uint32_t) { return ifc4ElementClass.data(); };
-        void* buffer = nullptr;
-        std::size_t elements_buffer_size = 0;
-        const auto setOutputArray = [&buffer, &elements_buffer_size](
-                                        uint32_t, std::size_t size) {
-            buffer = calloc(size, 1);
-            elements_buffer_size = size;
-            return buffer;
-        };
-
-        ctx().getInputPointer = nullptr;
-        ctx().getInputDouble = nullptr;
-        ctx().getInputInt = nullptr;
-        ctx().getInputString = std::function(getType);
-        ctx().setOutputPointer = nullptr;
-        ctx().setOutputDouble = nullptr;
-        ctx().setOutputInt = nullptr;
-        ctx().setOutputString = nullptr;
-        ctx().setOutputArray = std::function(setOutputArray);
-
-        filterByElement();
-
-        const auto elementArray = (IfcUtil::IfcBaseClass**)buffer;
-        const auto elements = elements_buffer_size / sizeof(void*);
-
-        for (std::size_t i = 0; i < elements; ++i) {
-            try {
-                const auto element =
-                    elementArray[i]->as<Ifc4::IfcElement>(true);
-                const auto className = element->declaration().name();
-                EXPECT_EQ(className, ifc4ElementClass);
-            } catch (IfcParse::IfcException& e) {
-                FAIL() << "While parsing this error occurred: " << e.what();
-            }
+        const auto instances = session->instancesOf(ifc4ElementClass);
+        for (const auto& instance : instances) {
+            const auto* element =
+                static_cast<IfcUtil::IfcBaseClass*>(instance.ptr)
+                    ->as<Ifc4::IfcElement>(true);
+            ASSERT_NE(element, nullptr);
+            EXPECT_EQ(element->declaration().name(), ifc4ElementClass);
         }
-        if (buffer) free(buffer);
     }
 }
 
 TEST(Functions, GetBoundingBox) {
     ASSERT_TRUE(loadTestIfc("correct.ifc"));
+    auto* session = ActiveSession::get();
+    ASSERT_NE(session, nullptr);
 
-    IfcParse::IfcFile* file = OpenBimRL::Engine::Utils::getCurrentFile();
-    std::uint32_t counter = 0;
-    std::vector<void*> allocations;
-
-    ctx().getInputPointer = std::function([file, &counter](uint32_t) {
-        return (void*)(*(file->instances_by_type("IfcSpace")->begin() +
-                         counter));
-    });
-    ctx().getInputDouble = nullptr;
-    ctx().getInputInt = nullptr;
-    ctx().getInputString = nullptr;
-    ctx().setOutputArray = [&allocations](uint32_t, std::size_t size) {
-        void* buffer = calloc(size, 1);
-        allocations.push_back(buffer);
-        return buffer;
-    };
-
-    for (; counter < file->instances_by_type("IfcSpace")->size(); counter++)
-        getBoundingBox();
-
-    for (void* p : allocations) free(p);
+    const auto spaces = session->instancesOf("IfcSpace");
+    for (const auto& space : spaces) {
+        EXPECT_TRUE(boundsOf(*session, space).has_value());
+    }
 }
 
 TEST(Functions, CalculateBuildingBounds) {
     ASSERT_TRUE(loadTestIfc("correct.ifc"));
-
-    void* buffer = nullptr;
-    ctx().setOutputArray = [&buffer](uint32_t, std::size_t size) {
-        buffer = calloc(size, 1);
-        return buffer;
-    };
-
-    calculatingBuildingBounds();
-    free(buffer);
+    auto* session = ActiveSession::get();
+    ASSERT_NE(session, nullptr);
+    EXPECT_TRUE(buildingBounds(*session).has_value());
 }
 
 TEST(Utils, GeometryPolygon) {
     ASSERT_TRUE(loadTestIfc("correct.ifc"));
+    auto* session = ActiveSession::get();
+    ASSERT_NE(session, nullptr);
 
-    IfcParse::IfcFile* file = OpenBimRL::Engine::Utils::getCurrentFile();
-    boost::shared_ptr<aggregate_of_instance> ptr;
-    try {
-        ptr = file->instances_by_type("IfcWall");
-    } catch (const IfcParse::IfcException&) {
-    }
-
-    for (const auto item : (*ptr)) {
-        const auto size = request_geometry_polygon(item);
-        if (!size) continue;
-        auto* str = (char*)std::calloc(size + 1, sizeof(double));
-        copy_geometry_polygon(str);
-        std::free(str);
+    for (const auto& wall : session->instancesOf("IfcWall")) {
+        const auto polygon = footprintPolygonXY(*session, wall);
+        (void)polygon;
     }
 }
 
@@ -212,70 +149,42 @@ TEST(IFC4X3, ElementFrameFromPlacement) {
 
 TEST(Serializer, Serialize) {
     ASSERT_TRUE(loadTestIfc("correct.ifc"));
+    auto* session = ActiveSession::get();
+    ASSERT_NE(session, nullptr);
 
-    IfcParse::IfcFile* file = OpenBimRL::Engine::Utils::getCurrentFile();
-    boost::shared_ptr<aggregate_of_instance> ptr;
-    try {
-        ptr = file->instances_by_type("IfcSpace");
-    } catch (const IfcParse::IfcException&) {
-    }
-
-    for (const auto item : (*ptr)) {
-        const auto size = request_ifc_object_json_size(item);
-        auto* str = (char*)std::calloc(size + 1, 1);
-        ifc_object_to_json(str);
-        std::free(str);
+    for (const auto& space : session->instancesOf("IfcSpace")) {
+        const auto data = snapshot(*session, space);
+        const auto json = toJson(data);
+        EXPECT_FALSE(json.empty());
     }
 }
 
-// Native issue #3 / #4: unknown or absent types must not throw / segfault.
 TEST(Functions, FilterByElementUnknownTypeIsSafe) {
     ASSERT_TRUE(loadTestIfc("correct.ifc"));
-
-    bool sawNullPointer = false;
-    bool sawEmptyArray = false;
-    ctx().getInputString = [](uint32_t) { return "IfcDefinitelyNotAType"; };
-    ctx().setOutputPointer = [&](uint32_t, void* p) {
-        if (p == nullptr) sawNullPointer = true;
-    };
-    ctx().setOutputArray = [&](uint32_t, std::size_t size) -> void* {
-        if (size == 0) sawEmptyArray = true;
-        return nullptr;
-    };
-
-    EXPECT_NO_THROW(filterByElement());
-    EXPECT_TRUE(sawNullPointer || sawEmptyArray);
+    auto* session = ActiveSession::get();
+    ASSERT_NE(session, nullptr);
+    EXPECT_NO_THROW({
+        const auto instances = session->instancesOf("IfcDefinitelyNotAType");
+        EXPECT_TRUE(instances.empty());
+    });
 }
 
 TEST(Functions, FilterByElementEmptyResultIsSafe) {
     ASSERT_TRUE(loadTestIfc("correct.ifc"));
-
-    bool sawEmpty = false;
-    ctx().getInputString = [](uint32_t) { return "IfcRail"; };  // IFC4X3-only
-    ctx().setOutputPointer = [&](uint32_t, void* p) {
-        if (p == nullptr) sawEmpty = true;
-    };
-    ctx().setOutputArray = [&](uint32_t, std::size_t size) -> void* {
-        if (size == 0) sawEmpty = true;
-        return nullptr;
-    };
-
-    EXPECT_NO_THROW(filterByElement());
-    EXPECT_TRUE(sawEmpty);
+    auto* session = ActiveSession::get();
+    ASSERT_NE(session, nullptr);
+    const auto instances = session->instancesOf("IfcRail");
+    EXPECT_TRUE(instances.empty());
 }
 
-// Native issue #5: property snapshot must tolerate null / non-product entities.
 TEST(Serializer, SnapshotNullPointerIsSafe) {
     ASSERT_TRUE(loadTestIfc("correct.ifc"));
-    const auto size = request_ifc_object_json_size(nullptr);
-    ASSERT_GT(size, 0u);
-    auto* str = (char*)std::calloc(size + 1, 1);
-    ifc_object_to_json(str);
-    EXPECT_NE(str[0], '\0');
-    std::free(str);
+    auto* session = ActiveSession::get();
+    ASSERT_NE(session, nullptr);
+    const auto data = snapshot(*session, IfcEntityRef{nullptr});
+    EXPECT_NO_THROW({ (void)toJson(data); });
 }
 
-// Native issue #6: entities without Representation must not segfault.
 TEST(Utils, ElementFrameWithoutRepresentationIsSafe) {
     ASSERT_TRUE(loadTestIfc("correct.ifc"));
     IfcParse::IfcFile* file = OpenBimRL::Engine::Utils::getCurrentFile();
@@ -285,9 +194,8 @@ TEST(Utils, ElementFrameWithoutRepresentationIsSafe) {
     ASSERT_TRUE(projects);
     ASSERT_GE(projects->size(), 1);
 
-    OpenBimRL::Engine::Utils::ElementFrame frame{};
-    // May fail to extract a frame, but must not abort.
+    ElementFrame frame{};
     EXPECT_NO_THROW({
-        (void)OpenBimRL::Engine::Utils::getElementFrame((*projects)[0], frame);
+        (void)extractFrame(IfcEntityRef{(*projects)[0]}, frame);
     });
 }
